@@ -21,10 +21,15 @@ async function render(content, opts = {}) {
       const rendered = marked(segment.content);
       process.stdout.write(rendered);
     } else if (segment.type === 'gum') {
+      // Check for parse errors from parser
+      if (segment.error) {
+        console.error(`[gum.jsx error: ${segment.error.message}]`);
+        continue;
+      }
       try {
         // Merge global opts with per-block options (block options take precedence)
         const renderOpts = { ...opts, ...segment.options };
-        const png = await renderGumToPng(segment.content, renderOpts);
+        const png = await renderGumToPng(segment.elem, segment.size, renderOpts);
         writeImage(png);
       } catch (err) {
         console.error(`[gum.jsx error: ${err.message}]`);

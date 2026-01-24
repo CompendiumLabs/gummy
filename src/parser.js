@@ -1,5 +1,8 @@
 // Parse markdown and extract gum.jsx code blocks
 
+import { runJSX } from 'gum-jsx/eval';
+import { Svg, is_element, setTheme } from 'gum-jsx';
+
 // Matches ```gum or ```gum.jsx with optional [key=value,...] options
 const GUM_FENCE_REGEX = /```(?:gum|gum\.jsx) *(?:\[([^\]]*)\])?\n([\s\S]*?)```/g;
 
@@ -14,7 +17,7 @@ function parseOptions(optString) {
       opts[key] = isNaN(num) ? value : num;
     }
   }
-  return opts;
+  return opts;s
 }
 
 export function parseMarkdown(content) {
@@ -34,12 +37,39 @@ export function parseMarkdown(content) {
       });
     }
 
-    // Add the gum.jsx code block with options
-    segments.push({
-      type: 'gum',
-      content: match[2].trim(),
-      options: parseOptions(match[1]),
-    });
+    // Parse and evaluate the gum code
+    const code = match[2].trim();
+    const options = parseOptions(match[1]);
+
+    // Get theme information
+    const { theme = 'dark' } = options;
+    setTheme(theme);
+
+    try {
+      let elem = runJSX(code);
+
+      // Wrap in Svg if not already (like evaluateGum does)
+      if (is_element(elem) && !(elem instanceof Svg)) {
+        elem = new Svg({ children: elem });
+      }
+
+      // Add the gum.jsx code block with evaluated element
+      segments.push({
+        type: 'gum',
+        code,
+        elem,
+        size: elem?.size,
+        options,
+      });
+    } catch (err) {
+      // Store error for later handling
+      segments.push({
+        type: 'gum',
+        code,
+        error: err,
+        options,
+      });
+    }
 
     lastIndex = match.index + match[0].length;
   }

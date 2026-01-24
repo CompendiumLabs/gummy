@@ -1,31 +1,31 @@
-// Render gum.jsx code to PNG buffer
+// Render gum.jsx element to PNG buffer
 
 import { Resvg } from '@resvg/resvg-js';
-import { evaluateGum } from 'gum-jsx/eval';
+import { setTheme } from 'gum-jsx';
 
-export async function renderGumToPng(gumCode, opts = {}) {
+export async function renderGumToPng(elem, size, opts = {}) {
   const { width, height, theme = 'dark' } = opts;
 
-  // Evaluate gum.jsx to SVG
-  const elem = evaluateGum(gumCode, { theme });
+  // Set theme before generating SVG
+  setTheme(theme);
+
+  // Generate SVG from pre-evaluated element
   const svg = elem.svg();
+
+  // Use element's native size for constraint calculations
+  const [naturalWidth, naturalHeight] = size || [0, 0];
 
   // Determine fitTo mode based on constraints
   let fitTo;
   if (width && height) {
-    // Both constraints: need to determine which is more limiting
-    // Get SVG natural dimensions to calculate aspect ratio
-    const probe = new Resvg(svg);
-    const natural = probe.innerBBox();
-    if (natural && natural.width > 0 && natural.height > 0) {
-      const scaleW = width / natural.width;
-      const scaleH = height / natural.height;
-      // Use the more constraining dimension
+    // Both constraints: use the more limiting dimension
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      const scaleW = width / naturalWidth;
+      const scaleH = height / naturalHeight;
       fitTo = scaleW < scaleH
         ? { mode: 'width', value: width }
         : { mode: 'height', value: height };
     } else {
-      // Fallback to width if we can't determine natural size
       fitTo = { mode: 'width', value: width };
     }
   } else if (height) {

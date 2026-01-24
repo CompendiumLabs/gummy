@@ -11,8 +11,8 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "gum-jsx": "^1.2.4",
     "@resvg/resvg-js": "^2.6.0",
+    "gum-jsx": "file:../gum.jsx",
     "marked": "^12.0.0",
     "marked-terminal": "^7.0.0"
   }
