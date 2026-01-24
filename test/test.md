@@ -20,7 +20,7 @@ The plot above should render inline in your terminal!
 
 ```gum [height=300]
 <Box margin>
-  <Circle fill={blue} />
+  <Circle fill={blue} stroke={none} />
 </Box>
 ```
 
