@@ -22,7 +22,9 @@ async function render(content, opts = {}) {
       process.stdout.write(rendered);
     } else if (segment.type === 'gum') {
       try {
-        const png = await renderGumToPng(segment.content, opts);
+        // Merge global opts with per-block options (block options take precedence)
+        const renderOpts = { ...opts, ...segment.options };
+        const png = await renderGumToPng(segment.content, renderOpts);
         writeImage(png);
       } catch (err) {
         console.error(`[gum.jsx error: ${err.message}]`);

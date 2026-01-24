@@ -18,10 +18,10 @@ The plot above should render inline in your terminal!
 
 ## Another Example
 
-```gum
-<Frame rounded padding>
+```gum [height=300]
+<Box margin>
   <Circle fill={blue} />
-</Frame>
+</Box>
 ```
 
 That's a blue circle.
