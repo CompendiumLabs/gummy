@@ -1,0 +1,19 @@
+{
+  "name": "gummy",
+  "version": "0.1.0",
+  "description": "Markdown pager with embedded gum.jsx visualizations",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "gummy": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "gum-jsx": "^1.2.4",
+    "@resvg/resvg-js": "^2.6.0",
+    "marked": "^12.0.0",
+    "marked-terminal": "^7.0.0"
+  }
+}
