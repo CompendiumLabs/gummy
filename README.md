@@ -33,7 +33,7 @@ Embed gum.jsx visualizations using fenced code blocks:
 
 ### Options
 
-Specify rendering options in brackets after the language tag:
+Specify rendering options in brackets after the language tag. Note that these aren't displayed by GitHub, you have to look at the actual file to see them. But this file will render properly with `gummy`.
 
 ```gum [width=600]
 <Circle fill={blue} />

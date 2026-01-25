@@ -3,6 +3,9 @@
 import { runJSX } from 'gum-jsx/eval';
 import { Svg, is_element, setTheme } from 'gum-jsx';
 
+// Defaults for Svg
+const DEFAULT_SIZE = 750;
+
 // Matches ```gum or ```gum.jsx with optional [key=value,...] options
 const GUM_FENCE_REGEX = /```(?:gum|gum\.jsx) *(?:\[([^\]]*)\])?\n([\s\S]*?)```/g;
 
@@ -11,13 +14,12 @@ function parseOptions(optString) {
   const opts = {};
   for (const part of optString.split(',')) {
     const [key, value] = part.split('=').map(s => s.trim());
-    if (key && value !== undefined) {
-      // Parse numeric values
+    if (key && value) {
       const num = Number(value);
       opts[key] = isNaN(num) ? value : num;
     }
   }
-  return opts;s
+  return opts;
 }
 
 export function parseMarkdown(content) {
@@ -50,7 +52,7 @@ export function parseMarkdown(content) {
 
       // Wrap in Svg if not already (like evaluateGum does)
       if (is_element(elem) && !(elem instanceof Svg)) {
-        elem = new Svg({ children: elem });
+        elem = new Svg({ children: elem, size: DEFAULT_SIZE });
       }
 
       // Add the gum.jsx code block with evaluated element

@@ -29,7 +29,7 @@ async function render(content, opts = {}) {
       try {
         // Merge global opts with per-block options (block options take precedence)
         const renderOpts = { ...opts, ...segment.options };
-        const png = await renderGumToPng(segment.elem, segment.size, renderOpts);
+        const png = await renderGumToPng(segment.elem, renderOpts);
         writeImage(png);
       } catch (err) {
         console.error(`[gum.jsx error: ${err.message}]`);
