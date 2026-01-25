@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@resvg/resvg-js": "^2.6.0",
+    "commander": "^14.0.2",
     "gum-jsx": "file:../gum.jsx",
     "marked": "^12.0.0",
     "marked-terminal": "^7.0.0"

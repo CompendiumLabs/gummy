@@ -5,7 +5,8 @@
 import { readFileSync } from 'fs';
 import { marked } from 'marked';
 import TerminalRenderer from 'marked-terminal';
-import { parseMarkdown } from './parser.js';
+import { program } from 'commander';
+import { parseMarkdown, parseGum } from './parser.js';
 import { renderGumToPng } from './renderer.js';
 import { writeImage } from './kitty.js';
 
@@ -21,13 +22,11 @@ async function render(content, opts = {}) {
       const rendered = marked(segment.content);
       process.stdout.write(rendered);
     } else if (segment.type === 'gum') {
-      // Check for parse errors from parser
       if (segment.error) {
         console.error(`[gum.jsx error: ${segment.error.message}]`);
         continue;
       }
       try {
-        // Merge global opts with per-block options (block options take precedence)
         const renderOpts = { ...opts, ...segment.options };
         const png = await renderGumToPng(segment.elem, renderOpts);
         writeImage(png);
@@ -38,25 +37,40 @@ async function render(content, opts = {}) {
   }
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  const file = args[0];
-
-  if (!file) {
-    // Read from stdin
-    const chunks = [];
-    for await (const chunk of process.stdin) {
-      chunks.push(chunk);
-    }
-    const content = Buffer.concat(chunks).toString('utf-8');
-    await render(content);
-  } else {
-    const content = readFileSync(file, 'utf-8');
-    await render(content);
-  }
+async function renderGum(code, opts = {}) {
+  const elem = parseGum(code);
+  const png = await renderGumToPng(elem, opts);
+  writeImage(png);
 }
 
-main().catch(err => {
+program
+  .name('gummy')
+  .description('Markdown pager with embedded gum.jsx visualizations')
+  .argument('[file]', 'Markdown file to render (reads from stdin if not provided)')
+  .option('-W, --width <pixels>', 'Max width for gum blocks', parseInt)
+  .option('-H, --height <pixels>', 'Max height for gum blocks', parseInt)
+  .option('-j, --jsx', 'Render pure gum.jsx', false)
+  .action(async (file, opts) => {
+    const { jsx } = opts;
+    let content;
+    if (!file) {
+      const chunks = [];
+      for await (const chunk of process.stdin) {
+        chunks.push(chunk);
+      }
+      content = Buffer.concat(chunks).toString('utf-8');
+    } else {
+      content = readFileSync(file, 'utf-8');
+    }
+    if (jsx) {
+      await renderGum(content, opts);
+    } else {
+      await render(content, opts);
+    }
+  });
+
+program.parseAsync().catch(err => {
   console.error(err);
   process.exit(1);
 });
+

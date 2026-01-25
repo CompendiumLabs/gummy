@@ -22,7 +22,15 @@ function parseOptions(optString) {
   return opts;
 }
 
-export function parseMarkdown(content) {
+function parseGum(code, theme='dark') {
+  setTheme(theme);
+  const elem0 = runJSX(code);
+  const wrap = is_element(elem0) && !(elem0 instanceof Svg);
+  const elem = wrap ? new Svg({ children: elem0, size: DEFAULT_SIZE }) : elem0;
+  return elem;
+}
+
+function parseMarkdown(content) {
   const segments = [];
   let lastIndex = 0;
   let match;
@@ -40,31 +48,22 @@ export function parseMarkdown(content) {
     }
 
     // Parse and evaluate the gum code
-    const code = match[2].trim();
     const options = parseOptions(match[1]);
+    const code = match[2].trim();
 
     // Get theme information
     const { theme = 'dark' } = options;
-    setTheme(theme);
 
+    // Parse and add tree or error
     try {
-      let elem = runJSX(code);
-
-      // Wrap in Svg if not already (like evaluateGum does)
-      if (is_element(elem) && !(elem instanceof Svg)) {
-        elem = new Svg({ children: elem, size: DEFAULT_SIZE });
-      }
-
-      // Add the gum.jsx code block with evaluated element
+      const elem = parseGum(code, theme);
       segments.push({
         type: 'gum',
         code,
         elem,
-        size: elem?.size,
         options,
       });
     } catch (err) {
-      // Store error for later handling
       segments.push({
         type: 'gum',
         code,
@@ -86,3 +85,6 @@ export function parseMarkdown(content) {
 
   return segments;
 }
+
+export { parseMarkdown, parseGum }
+
