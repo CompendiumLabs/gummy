@@ -3,6 +3,22 @@
 
 const CHUNK_SIZE = 4096;
 
+// ANSI color codes
+const COLORS = {
+  magenta: 95,
+  green: 92,
+  cyan: 96,
+  yellow: 93,
+  blue: 94,
+  red: 91,
+};
+
+export function color(name, text, bold = false) {
+  const code = COLORS[name] || 0;
+  const prefix = bold ? '\x1b[1m' : '';
+  return `${prefix}\x1b[${code}m${text}\x1b[0m`;
+}
+
 export function encodeImage(pngBuffer) {
   return pngBuffer.toString('base64');
 }

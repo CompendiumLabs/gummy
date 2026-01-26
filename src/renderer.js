@@ -2,7 +2,9 @@
 
 import { readFileSync } from 'fs';
 import { parseGum, renderGum, rasterizeSvg } from './parser.js';
-import { formatImage } from './kitty.js';
+import { formatImage, color } from './kitty.js';
+
+const HEADING_COLORS = ['magenta', 'blue', 'green', 'red', 'cyan', 'yellow'];
 
 // Parse space-delimited key=value options from string
 function parseOptions(str) {
@@ -31,7 +33,8 @@ function createRenderer(globalOpts = {}) {
     heading({ tokens, depth }) {
       const text = this.parser.parseInline(tokens);
       const prefix = '#'.repeat(depth);
-      return `${prefix} ${text}\n\n`;
+      const clr = HEADING_COLORS[depth - 1] || 'magenta';
+      return color(clr, `${prefix} ${text}`, true) + '\n\n';
     },
 
     paragraph({ tokens }) {
