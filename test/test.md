@@ -12,17 +12,23 @@ Here's a sine wave:
 </Plot>
 ```
 
-## More Text
+## Render Arguments
 
-The plot above should render inline in your terminal!
+Let's pass a width specifier:
 
-## Another Example
-
-```gum [height=300]
+```gum height=300
 <Box margin>
   <Circle fill={blue} stroke={none} />
 </Box>
 ```
 
 That's a blue circle.
+
+## Regular Images
+
+We can also include regular SVG/PNG images:
+
+![Ride the Snake](test/snake.png)
+
+Hooray!
 

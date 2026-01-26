@@ -22,6 +22,15 @@ function parseGum(code, theme='dark') {
   return elem;
 }
 
+// Rasterize SVG buffer/string to PNG
+function rasterizeSvg(svg, opts = {}) {
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: 'original' },
+    ...opts,
+  });
+  return resvg.render().asPng();
+}
+
 // Render gum.jsx Svg element to PNG data
 function renderGum(elem, opts = {}) {
   const { width, height } = opts;
@@ -52,7 +61,7 @@ function renderGum(elem, opts = {}) {
   }
 
   // Rasterize SVG to PNG with gum-jsx fonts
-  const resvg = new Resvg(svg, {
+  return rasterizeSvg(svg, {
     fitTo,
     font: {
       fontFiles: [fontSans, fontMono],
@@ -62,9 +71,7 @@ function renderGum(elem, opts = {}) {
       monospaceFamily: 'IBM Plex Mono',
     },
   });
-  const pngData = resvg.render();
-  return pngData.asPng();
 }
 
-export { parseGum, renderGum }
+export { parseGum, renderGum, rasterizeSvg }
 

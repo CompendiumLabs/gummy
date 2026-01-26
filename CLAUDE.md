@@ -7,24 +7,23 @@ Markdown pager that renders embedded gum.jsx visualizations inline in the termin
 ```
 src/
   index.js    - CLI entrypoint, orchestrates parsing and rendering
-  parser.js   - Extracts markdown and gum code blocks, evaluates gum.jsx
-  renderer.js - Converts gum elements to PNG via resvg
+  parser.js   - Handles evaluate and rendering (to PNG data) of gum.jsx
+  renderer.js - A marked Renderer that echos most markdown and handles gum.jsx
   kitty.js    - Outputs images using Kitty graphics protocol
 ```
 
 ## Key Dependencies
 
 - `gum-jsx` - Vector graphics DSL (local dependency at ../gum.jsx)
+- `marked` - Markdown parser (we provide a custom renderer)
 - `@resvg/resvg-js` - SVG to PNG rasterization
-- `marked` + `marked-terminal` - Markdown rendering for terminal
 
 ## Code Flow
 
-1. **parser.js**: Regex extracts ```` ```gum ```` blocks with optional `[key=value]` options
-2. **parser.js**: Calls `runJSX()` to evaluate code, wraps in `Svg` if needed, stores `elem` and `elem.size`
-3. **index.js**: Iterates segments, renders markdown with marked, passes gum elements to renderer
-4. **renderer.js**: Uses `elem.size` for constraint calculations, calls `elem.svg()`, rasterizes with Resvg
-5. **kitty.js**: Base64 encodes PNG, outputs in 4KB chunks using Kitty escape sequences
+1. **index.js**: Main entry point that either calls a markdown parser or a pure gum.jsx renderer
+2. **parser.js**: Calls `runJSX()` to evaluate code, wraps in `Svg` if needed, stores `elem` and `elem.size`. Also includes resvg rasterization to PNG data.
+3. **renderer.js**: A basic marked Renderer that routes the gum.jsx routines
+4. **kitty.js**: Base64 encodes PNG, outputs in 4KB chunks using Kitty escape sequences
 
 ## Gum.jsx Integration
 

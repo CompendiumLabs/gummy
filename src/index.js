@@ -11,7 +11,7 @@ import { formatImage } from './kitty.js';
 
 function displayMarkdown(content, opts = {}) {
   const renderer = createRenderer(opts);
-  marked.use({ renderer });
+  marked.use({ renderer, useNewRenderer: true });
   const output = marked(content);
   process.stdout.write(output);
 }
@@ -22,6 +22,14 @@ function displayGum(code, opts = {}) {
   process.stdout.write(formatImage(png));
 }
 
+async function readStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf-8');
+}
+
 program
   .name('gummy')
   .description('Markdown pager with embedded gum.jsx visualizations')
@@ -29,23 +37,10 @@ program
   .option('-W, --width <pixels>', 'Max width for gum blocks', parseInt)
   .option('-H, --height <pixels>', 'Max height for gum blocks', parseInt)
   .option('-j, --jsx', 'Render pure gum.jsx', false)
-  .action(async (file, opts) => {
-    const { jsx } = opts;
-    let content;
-    if (!file) {
-      const chunks = [];
-      for await (const chunk of process.stdin) {
-        chunks.push(chunk);
-      }
-      content = Buffer.concat(chunks).toString('utf-8');
-    } else {
-      content = readFileSync(file, 'utf-8');
-    }
-    if (jsx) {
-      displayGum(content, opts);
-    } else {
-      displayMarkdown(content, opts);
-    }
+  .action(async (file, { jsx, ...opts }) => {
+    const content = file ? readFileSync(file, 'utf-8') : await readStdin();
+    const displayer = jsx ? displayGum : displayMarkdown;
+    displayer(content, opts);
   });
 
 program.parseAsync().catch(err => {
