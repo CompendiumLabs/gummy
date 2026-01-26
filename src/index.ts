@@ -8,22 +8,19 @@ import { program } from 'commander';
 import { createRenderer } from './renderer.js';
 import { parseGum, renderGum } from './parser.js';
 import { formatImage } from './kitty.js';
-
-interface Options {
-  [key: string]: string | number;
-}
+import type { Options, Theme, Size } from './types.js';
 
 function displayMarkdown(content: string, opts: Options = {}): void {
   const renderer = createRenderer(opts);
-  // @ts-expect-error useNewRenderer is valid but not in types
-  marked.use({ renderer, useNewRenderer: true });
+  marked.use({ renderer });
   const output = marked(content) as string;
   process.stdout.write(output);
 }
 
 function displayGum(code: string, opts: Options = {}): void {
-  const elem = parseGum(code);
-  const png = renderGum(elem, opts);
+  const { theme, size, width, height } = opts
+  const elem = parseGum(code, { theme, size });
+  const png = renderGum(elem, { width, height });
   process.stdout.write(formatImage(png));
 }
 
@@ -41,14 +38,13 @@ program
   .argument('[file]', 'Markdown file to render (reads from stdin if not provided)')
   .option('-W, --width <pixels>', 'Max width for gum blocks', parseInt)
   .option('-H, --height <pixels>', 'Max height for gum blocks', parseInt)
+  .option('-t, --theme <name>', 'Theme to use for gum.jsx')
+  .option('-s, --size <pixels>', 'Coordinate size for SVG', parseInt)
   .option('-j, --jsx', 'Render pure gum.jsx', false)
-  .action(async (file: string | undefined, { jsx, ...rawOpts }: { jsx: boolean; width?: number; height?: number }) => {
+  .action(async (file: string | undefined, { jsx, width, height, theme, size }: { jsx: boolean; width?: number; height?: number, theme?: string, size?: number }) => {
     const content = file ? readFileSync(file, 'utf-8') : await readStdin();
-    const opts: Options = {};
-    if (rawOpts.width != null) opts.width = rawOpts.width;
-    if (rawOpts.height != null) opts.height = rawOpts.height;
     const displayer = jsx ? displayGum : displayMarkdown;
-    displayer(content, opts);
+    displayer(content, { width, height, theme, size });
   });
 
 program.parseAsync().catch((err: Error) => {

@@ -4,12 +4,9 @@ import { readFileSync } from 'fs';
 import type { Tokens, RendererObject } from 'marked';
 import { parseGum, renderGum, rasterizeSvg } from './parser.js';
 import { formatImage, color } from './kitty.js';
+import type { Options } from './types.js';
 
 const HEADING_COLORS = ['magenta', 'blue', 'green', 'red', 'cyan', 'yellow'];
-
-interface Options {
-  [key: string]: string | number;
-}
 
 // Parse space-delimited key=value options from string
 function parseOptions(str: string): Options {
@@ -19,8 +16,11 @@ function parseOptions(str: string): Options {
     if (eq > 0) {
       const key = part.slice(0, eq);
       const value = part.slice(eq + 1);
-      const num = Number(value);
-      opts[key] = isNaN(num) ? value : num;
+      if (key === 'width' || key === 'height') {
+        opts[key] = Number(value);
+      } else if (key === 'theme' && (value === 'light' || value === 'dark')) {
+        opts.theme = value;
+      }
     }
   }
   return opts;
@@ -51,13 +51,13 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
       const [baseLang, ...rest] = (lang || '').split(/\s+/);
 
       if (isGumLang(baseLang)) {
-        const options = parseOptions(rest.join(' '));
-        const renderOpts = { ...globalOpts, ...options };
-        const theme: 'light' | 'dark' = options.theme === 'light' ? 'light' : 'dark';
-
+        const { theme, size, width, height } = {
+          ...globalOpts,
+          ...parseOptions(rest.join(' ')),
+        };
         try {
-          const elem = parseGum(text, theme);
-          const png = renderGum(elem, renderOpts);
+          const elem = parseGum(text, { theme, size });
+          const png = renderGum(elem, { width, height });
           return formatImage(png);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);

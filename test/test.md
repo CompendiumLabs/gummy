@@ -28,7 +28,7 @@ That's a blue circle.
 
 We can also include regular SVG/PNG images:
 
-![height=200](test/snake.svg)
+![height=300](test/snake.svg)
 
 Hooray!
 

@@ -27,10 +27,9 @@ src/
 
 ## Gum.jsx Integration
 
-- `runJSX(code)` - Parses and evaluates gum.jsx code, returns element tree
+- `evaluateGum(code, { theme, size })` - Parses and evaluates gum.jsx code, returns element tree
 - `Svg` class - Wrapper element with `size: [width, height]` property
 - `elem.svg()` - Generates SVG string from element tree
-- `setTheme(theme)` - Sets global theme ('dark' or 'light') before SVG generation
 
 ## Code Fence Syntax
 

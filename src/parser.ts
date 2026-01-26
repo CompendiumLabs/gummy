@@ -3,6 +3,7 @@
 import { createRequire } from 'module';
 import { Resvg } from '@resvg/resvg-js';
 import { evaluateGum, type Svg } from 'gum-jsx/eval';
+import type { Options, Theme, Size } from './types.js';
 
 // Resolve font paths from gum-jsx package
 const require = createRequire(import.meta.url);
@@ -23,16 +24,9 @@ type FitTo =
   | { mode: 'width'; value: number }
   | { mode: 'height'; value: number };
 
-interface RasterizeOpts {
-  width?: number;
-  height?: number;
-  font?: typeof FONT_ARGS;
-  [key: string]: unknown;
-}
-
 // Parse gum.jsx into an Svg element
-export function parseGum(code: string, theme: 'light' | 'dark' = 'dark'): Svg {
-  return evaluateGum(code, { theme });
+export function parseGum(code: string, { theme = 'dark', size = 750 } : { theme?: Theme, size?: Size }): Svg {
+  return evaluateGum(code, { theme, size });
 }
 
 // Build fitTo object from width/height options
@@ -48,15 +42,15 @@ function buildFitTo(width?: number, height?: number): FitTo {
 }
 
 // Rasterize SVG buffer/string to PNG
-export function rasterizeSvg(svg: string | Buffer, opts: RasterizeOpts = {}): Buffer {
-  const { width, height, ...rest } = opts;
+export function rasterizeSvg(svg: string | Buffer, opts: Options = {}): Buffer {
+  const { width, height, font } = opts;
   const fitTo = buildFitTo(width, height);
-  const resvg = new Resvg(svg, { fitTo, ...rest });
+  const resvg = new Resvg(svg, { fitTo, font });
   return resvg.render().asPng();
 }
 
 // Render gum.jsx Svg element to PNG data
-export function renderGum(elem: Svg, opts: RasterizeOpts = {}): Buffer {
+export function renderGum(elem: Svg, opts: Options = {}): Buffer {
   // Render gum Element to SVG
   const svg = elem.svg();
   const { size } = elem;
@@ -72,9 +66,5 @@ export function renderGum(elem: Svg, opts: RasterizeOpts = {}): Buffer {
   }
 
   // Pass to resvg for rasterize
-  return rasterizeSvg(svg, {
-    width,
-    height,
-    font: FONT_ARGS
-  });
+  return rasterizeSvg(svg, { width, height, font: FONT_ARGS });
 }
