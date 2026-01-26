@@ -4,11 +4,10 @@ import { readFileSync } from 'fs';
 import { parseGum, renderGum, rasterizeSvg } from './parser.js';
 import { formatImage } from './kitty.js';
 
-// Parse space-delimited key=value options from info string
-function parseOptions(infoString) {
+// Parse space-delimited key=value options from string
+function parseOptions(str) {
   const opts = {};
-  const parts = infoString.split(/\s+/).slice(1); // skip language
-  for (const part of parts) {
+  for (const part of str.split(/\s+/)) {
     const eq = part.indexOf('=');
     if (eq > 0) {
       const key = part.slice(0, eq);
@@ -41,10 +40,10 @@ function createRenderer(globalOpts = {}) {
     },
 
     code({ text, lang }) {
-      const baseLang = lang?.split(/\s+/)[0] || '';
+      const [baseLang, ...rest] = (lang || '').split(/\s+/);
 
       if (isGumLang(baseLang)) {
-        const options = parseOptions(lang || '');
+        const options = parseOptions(rest.join(' '));
         const renderOpts = { ...globalOpts, ...options };
         const { theme = 'dark' } = options;
 
@@ -109,7 +108,8 @@ function createRenderer(globalOpts = {}) {
       if (!isUrl && (ext === 'png' || ext === 'svg')) {
         try {
           const data = readFileSync(href);
-          const png = ext === 'svg' ? rasterizeSvg(data) : data;
+          const opts = parseOptions(text || '');
+          const png = ext === 'svg' ? rasterizeSvg(data, opts) : data;
           return formatImage(png);
         } catch (err) {
           return `Unable to load: ${href}\n\n`;

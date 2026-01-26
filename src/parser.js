@@ -13,6 +13,15 @@ const require = createRequire(import.meta.url);
 const fontSans = require.resolve('gum-jsx/fonts/IBMPlexSans-Variable.ttf');
 const fontMono = require.resolve('gum-jsx/fonts/IBMPlexMono-Regular.ttf');
 
+// Store font arguments for resvg conversion
+const FONT_ARGS = {
+  fontFiles: [fontSans, fontMono],
+  loadSystemFonts: false,
+  defaultFontFamily: 'IBM Plex Sans',
+  sansSerifFamily: 'IBM Plex Sans',
+  monospaceFamily: 'IBM Plex Mono',
+};
+
 // Parse gum.jsx into an Svg element
 function parseGum(code, theme='dark') {
   setTheme(theme);
@@ -22,54 +31,47 @@ function parseGum(code, theme='dark') {
   return elem;
 }
 
+// Build fitTo object from width/height options
+function buildFitTo(width, height) {
+  if (height != null && width != null) {
+    return { mode: 'width', value: width }; // prefer width when both specified
+  } else if (height != null) {
+    return { mode: 'height', value: height };
+  } else if (width != null) {
+    return { mode: 'width', value: width };
+  }
+  return { mode: 'original' };
+}
+
 // Rasterize SVG buffer/string to PNG
 function rasterizeSvg(svg, opts = {}) {
-  const resvg = new Resvg(svg, {
-    fitTo: { mode: 'original' },
-    ...opts,
-  });
+  const { width, height, ...rest } = opts;
+  const fitTo = buildFitTo(width, height);
+  const resvg = new Resvg(svg, { fitTo, ...rest });
   return resvg.render().asPng();
 }
 
 // Render gum.jsx Svg element to PNG data
 function renderGum(elem, opts = {}) {
-  const { width, height } = opts;
-
-  // Generate SVG from pre-evaluated element
+  // Render gum Element to SVG
   const svg = elem.svg();
-  const { size: size0 } = elem;
+  const { size } = elem;
 
-  // Determine fitTo mode based on constraints
-  let fitTo;
-  if (width != null && height != null) {
-    if (size0 != null) {
-      const [width0, height0] = size0;
-      const scaleW = width / width0;
-      const scaleH = height / height0;
-      fitTo = scaleW < scaleH
-        ? { mode: 'width', value: width }
-        : { mode: 'height', value: height };
-    } else {
-      fitTo = { mode: 'width', value: width };
-    }
-  } else if (height != null) {
-    fitTo = { mode: 'height', value: height };
-  } else if (width != null) {
-    fitTo = { mode: 'width', value: width };
-  } else {
-    fitTo = { mode: 'original' };
+  // Scale down intrinsic height
+  let { width, height } = opts;
+  if (size != null) {
+    const [width0, height0] = size
+    const scaleW = width / width0;
+    const scaleH = height / height0;
+    if (scaleW < scaleH) height = null;
+    else width = null;
   }
 
-  // Rasterize SVG to PNG with gum-jsx fonts
+  // Pass to resvg for rasterize
   return rasterizeSvg(svg, {
-    fitTo,
-    font: {
-      fontFiles: [fontSans, fontMono],
-      loadSystemFonts: false,
-      defaultFontFamily: 'IBM Plex Sans',
-      sansSerifFamily: 'IBM Plex Sans',
-      monospaceFamily: 'IBM Plex Mono',
-    },
+    width,
+    height,
+    font: FONT_ARGS
   });
 }
 
