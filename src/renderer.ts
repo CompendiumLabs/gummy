@@ -16,9 +16,9 @@ function parseOptions(str: string): Options {
     if (eq > 0) {
       const key = part.slice(0, eq);
       const value = part.slice(eq + 1);
-      if (key === 'width' || key === 'height') {
+      if (key == 'size' || key == 'width' || key == 'height') {
         opts[key] = Number(value);
-      } else if (key === 'theme' && (value === 'light' || value === 'dark')) {
+      } else if (key == 'theme' && (value == 'light' || value == 'dark')) {
         opts.theme = value;
       }
     }
@@ -49,12 +49,10 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
 
     code({ text, lang }: Tokens.Code): string {
       const [baseLang, ...rest] = (lang || '').split(/\s+/);
+      const localOpts = parseOptions(rest.join(' '));
+      const { theme, size, width, height } = { ...globalOpts, ...localOpts };
 
       if (isGumLang(baseLang)) {
-        const { theme, size, width, height } = {
-          ...globalOpts,
-          ...parseOptions(rest.join(' ')),
-        };
         try {
           const elem = parseGum(text, { theme, size });
           const png = renderGum(elem, { width, height });
