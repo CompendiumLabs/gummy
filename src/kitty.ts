@@ -4,7 +4,7 @@
 const CHUNK_SIZE = 4096;
 
 // ANSI color codes
-const COLORS = {
+const COLORS: Record<string, number> = {
   magenta: 95,
   green: 92,
   cyan: 96,
@@ -13,17 +13,17 @@ const COLORS = {
   red: 91,
 };
 
-export function color(name, text, bold = false) {
+export function color(name: string, text: string, bold = false): string {
   const code = COLORS[name] || 0;
   const prefix = bold ? '\x1b[1m' : '';
   return `${prefix}\x1b[${code}m${text}\x1b[0m`;
 }
 
-export function encodeImage(pngBuffer) {
+export function encodeImage(pngBuffer: Buffer): string {
   return pngBuffer.toString('base64');
 }
 
-export function formatImage(pngBuffer) {
+export function formatImage(pngBuffer: Buffer): string {
   const base64 = encodeImage(pngBuffer);
   let result = '';
 
