@@ -4,43 +4,22 @@
 
 import { readFileSync } from 'fs';
 import { marked } from 'marked';
-import TerminalRenderer from 'marked-terminal';
 import { program } from 'commander';
-import { parseMarkdown, parseGum } from './parser.js';
-import { renderGumToPng } from './renderer.js';
-import { writeImage } from './kitty.js';
+import { createRenderer } from './renderer.js';
+import { parseGum, renderGum } from './parser.js';
+import { formatImage } from './kitty.js';
 
-marked.setOptions({
-  renderer: new TerminalRenderer(),
-});
-
-async function render(content, opts = {}) {
-  const segments = parseMarkdown(content);
-
-  for (const segment of segments) {
-    if (segment.type === 'markdown') {
-      const rendered = marked(segment.content);
-      process.stdout.write(rendered);
-    } else if (segment.type === 'gum') {
-      if (segment.error) {
-        console.error(`[gum.jsx error: ${segment.error.message}]`);
-        continue;
-      }
-      try {
-        const renderOpts = { ...opts, ...segment.options };
-        const png = await renderGumToPng(segment.elem, renderOpts);
-        writeImage(png);
-      } catch (err) {
-        console.error(`[gum.jsx error: ${err.message}]`);
-      }
-    }
-  }
+function displayMarkdown(content, opts = {}) {
+  const renderer = createRenderer(opts);
+  marked.use({ renderer });
+  const output = marked(content);
+  process.stdout.write(output);
 }
 
-async function renderGum(code, opts = {}) {
+function displayGum(code, opts = {}) {
   const elem = parseGum(code);
-  const png = await renderGumToPng(elem, opts);
-  writeImage(png);
+  const png = renderGum(elem, opts);
+  process.stdout.write(formatImage(png));
 }
 
 program
@@ -63,9 +42,9 @@ program
       content = readFileSync(file, 'utf-8');
     }
     if (jsx) {
-      await renderGum(content, opts);
+      displayGum(content, opts);
     } else {
-      await render(content, opts);
+      displayMarkdown(content, opts);
     }
   });
 

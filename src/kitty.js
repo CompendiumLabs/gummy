@@ -7,23 +7,20 @@ export function encodeImage(pngBuffer) {
   return pngBuffer.toString('base64');
 }
 
-export function writeImage(pngBuffer, opts = {}) {
+export function formatImage(pngBuffer) {
   const base64 = encodeImage(pngBuffer);
-  const chunks = [];
+  let result = '';
 
   for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
-    chunks.push(base64.slice(i, i + CHUNK_SIZE));
-  }
-
-  chunks.forEach((chunk, i) => {
-    const isLast = i === chunks.length - 1;
-    const control = i === 0
+    const chunk = base64.slice(i, i + CHUNK_SIZE);
+    const isFirst = i === 0;
+    const isLast = i + CHUNK_SIZE >= base64.length;
+    const control = isFirst
       ? `f=100,a=T,m=${isLast ? 0 : 1}`
       : `m=${isLast ? 0 : 1}`;
 
-    process.stdout.write(`\x1b_G${control};${chunk}\x1b\\`);
-  });
+    result += `\x1b_G${control};${chunk}\x1b\\`;
+  }
 
-  // Newline after image
-  process.stdout.write('\n');
+  return result + '\n';
 }

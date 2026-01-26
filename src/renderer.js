@@ -1,52 +1,113 @@
-// Render gum.jsx element to PNG buffer
+// Custom marked renderer for terminal output with gum.jsx support
 
-import { Resvg } from '@resvg/resvg-js';
-import { createRequire } from 'module';
+import { parseGum, renderGum } from './parser.js';
+import { formatImage } from './kitty.js';
 
-// Resolve font paths from gum-jsx package
-const require = createRequire(import.meta.url);
-const fontSans = require.resolve('gum-jsx/fonts/IBMPlexSans-Variable.ttf');
-const fontMono = require.resolve('gum-jsx/fonts/IBMPlexMono-Regular.ttf');
-
-export async function renderGumToPng(elem, opts = {}) {
-  const { width, height } = opts;
-
-  // Generate SVG from pre-evaluated element
-  const svg = elem.svg();
-  const { size: size0 } = elem;
-
-  // Determine fitTo mode based on constraints
-  let fitTo;
-  if (width != null && height != null) {
-    if (size0 != null) {
-      const [width0, height0] = size0;
-      const scaleW = width / width0;
-      const scaleH = height / height0;
-      fitTo = scaleW < scaleH
-        ? { mode: 'width', value: width }
-        : { mode: 'height', value: height };
-    } else {
-      fitTo = { mode: 'width', value: width };
+// Parse [key=value,...] options from info string
+function parseOptions(infoString) {
+  const match = infoString.match(/\[([^\]]*)\]/);
+  if (!match) return {};
+  const opts = {};
+  for (const part of match[1].split(',')) {
+    const [key, value] = part.split('=').map(s => s.trim());
+    if (key && value) {
+      const num = Number(value);
+      opts[key] = isNaN(num) ? value : num;
     }
-  } else if (height != null) {
-    fitTo = { mode: 'height', value: height };
-  } else if (width != null) {
-    fitTo = { mode: 'width', value: width };
-  } else {
-    fitTo = { mode: 'original' };
   }
+  return opts;
+}
 
-  // Rasterize SVG to PNG with gum-jsx fonts
-  const resvg = new Resvg(svg, {
-    fitTo,
-    font: {
-      fontFiles: [fontSans, fontMono],
-      loadSystemFonts: false,
-      defaultFontFamily: 'IBM Plex Sans',
-      sansSerifFamily: 'IBM Plex Sans',
-      monospaceFamily: 'IBM Plex Mono',
+// Check if language is gum/gum.jsx
+function isGumLang(lang) {
+  return lang === 'gum' || lang === 'gum.jsx';
+}
+
+// Create renderer with given global options
+export function createRenderer(globalOpts = {}) {
+  const renderer = {
+    // Block elements
+    heading({ text, depth }) {
+      const prefix = '#'.repeat(depth) + ' ';
+      return prefix + text + '\n\n';
     },
-  });
-  const pngData = resvg.render();
-  return pngData.asPng();
+
+    paragraph({ text }) {
+      return text + '\n\n';
+    },
+
+    code({ text, lang }) {
+      const baseLang = lang?.split(/\s|\[/)[0] || '';
+
+      if (isGumLang(baseLang)) {
+        const options = parseOptions(lang || '');
+        const renderOpts = { ...globalOpts, ...options };
+        const { theme = 'dark' } = options;
+
+        try {
+          const elem = parseGum(text, theme);
+          const png = renderGum(elem, renderOpts);
+          return formatImage(png);
+        } catch (err) {
+          return `[gum.jsx error: ${err.message}]\n\n`;
+        }
+      }
+
+      return '```' + (baseLang || '') + '\n' + text + '\n```\n\n';
+    },
+
+    blockquote({ text }) {
+      return '> ' + text.trim().replace(/\n/g, '\n> ') + '\n\n';
+    },
+
+    list({ items, ordered }) {
+      return items.map((item, i) => {
+        const bullet = ordered ? `${i + 1}. ` : '- ';
+        return bullet + item.text;
+      }).join('\n') + '\n\n';
+    },
+
+    listitem({ text }) {
+      return '- ' + text + '\n';
+    },
+
+    hr() {
+      return '---\n\n';
+    },
+
+    // Inline elements
+    strong({ text }) {
+      return '**' + text + '**';
+    },
+
+    em({ text }) {
+      return '_' + text + '_';
+    },
+
+    codespan({ text }) {
+      return '`' + text + '`';
+    },
+
+    link({ href, text }) {
+      return `[${text}](${href})`;
+    },
+
+    image({ href, text }) {
+      return `![${text}](${href})`;
+    },
+
+    text({ text }) {
+      return text;
+    },
+
+    html({ text }) {
+      return text;
+    },
+
+    br() {
+      return '\n';
+    }
+  };
+
+  return renderer;
 }

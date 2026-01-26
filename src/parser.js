@@ -1,27 +1,19 @@
 // Parse markdown and extract gum.jsx code blocks
 
+import { createRequire } from 'module';
+import { Resvg } from '@resvg/resvg-js';
 import { runJSX } from 'gum-jsx/eval';
 import { Svg, is_element, setTheme } from 'gum-jsx';
 
-// Defaults for Svg
+// Default SVG viewport size
 const DEFAULT_SIZE = 750;
 
-// Matches ```gum or ```gum.jsx with optional [key=value,...] options
-const GUM_FENCE_REGEX = /```(?:gum|gum\.jsx) *(?:\[([^\]]*)\])?\n([\s\S]*?)```/g;
+// Resolve font paths from gum-jsx package
+const require = createRequire(import.meta.url);
+const fontSans = require.resolve('gum-jsx/fonts/IBMPlexSans-Variable.ttf');
+const fontMono = require.resolve('gum-jsx/fonts/IBMPlexMono-Regular.ttf');
 
-function parseOptions(optString) {
-  if (!optString) return {};
-  const opts = {};
-  for (const part of optString.split(',')) {
-    const [key, value] = part.split('=').map(s => s.trim());
-    if (key && value) {
-      const num = Number(value);
-      opts[key] = isNaN(num) ? value : num;
-    }
-  }
-  return opts;
-}
-
+// Parse gum.jsx into an Svg element
 function parseGum(code, theme='dark') {
   setTheme(theme);
   const elem0 = runJSX(code);
@@ -30,61 +22,49 @@ function parseGum(code, theme='dark') {
   return elem;
 }
 
-function parseMarkdown(content) {
-  const segments = [];
-  let lastIndex = 0;
-  let match;
+// Render gum.jsx Svg element to PNG data
+function renderGum(elem, opts = {}) {
+  const { width, height } = opts;
 
-  // Reset regex state
-  GUM_FENCE_REGEX.lastIndex = 0;
+  // Generate SVG from pre-evaluated element
+  const svg = elem.svg();
+  const { size: size0 } = elem;
 
-  while ((match = GUM_FENCE_REGEX.exec(content)) !== null) {
-    // Add text before this code block
-    if (match.index > lastIndex) {
-      segments.push({
-        type: 'markdown',
-        content: content.slice(lastIndex, match.index),
-      });
+  // Determine fitTo mode based on constraints
+  let fitTo;
+  if (width != null && height != null) {
+    if (size0 != null) {
+      const [width0, height0] = size0;
+      const scaleW = width / width0;
+      const scaleH = height / height0;
+      fitTo = scaleW < scaleH
+        ? { mode: 'width', value: width }
+        : { mode: 'height', value: height };
+    } else {
+      fitTo = { mode: 'width', value: width };
     }
-
-    // Parse and evaluate the gum code
-    const options = parseOptions(match[1]);
-    const code = match[2].trim();
-
-    // Get theme information
-    const { theme = 'dark' } = options;
-
-    // Parse and add tree or error
-    try {
-      const elem = parseGum(code, theme);
-      segments.push({
-        type: 'gum',
-        code,
-        elem,
-        options,
-      });
-    } catch (err) {
-      segments.push({
-        type: 'gum',
-        code,
-        error: err,
-        options,
-      });
-    }
-
-    lastIndex = match.index + match[0].length;
+  } else if (height != null) {
+    fitTo = { mode: 'height', value: height };
+  } else if (width != null) {
+    fitTo = { mode: 'width', value: width };
+  } else {
+    fitTo = { mode: 'original' };
   }
 
-  // Add remaining text after last code block
-  if (lastIndex < content.length) {
-    segments.push({
-      type: 'markdown',
-      content: content.slice(lastIndex),
-    });
-  }
-
-  return segments;
+  // Rasterize SVG to PNG with gum-jsx fonts
+  const resvg = new Resvg(svg, {
+    fitTo,
+    font: {
+      fontFiles: [fontSans, fontMono],
+      loadSystemFonts: false,
+      defaultFontFamily: 'IBM Plex Sans',
+      sansSerifFamily: 'IBM Plex Sans',
+      monospaceFamily: 'IBM Plex Mono',
+    },
+  });
+  const pngData = resvg.render();
+  return pngData.asPng();
 }
 
-export { parseMarkdown, parseGum }
+export { parseGum, renderGum }
 
