@@ -1,16 +1,22 @@
 #!/usr/bin/env npx tsx
 
-import { marked } from 'marked';
 import { appendFileSync, writeFileSync } from 'fs';
-import { createRenderer } from '../src/renderer.js';
-import type { Options } from '../src/types.js';
+import { displayMarkdown } from '../src/display.js';
 import { color } from '../src/kitty.ts';
 
-writeFileSync('input.txt', ''); // Clear on start
+// nuke log file
+writeFileSync('input.txt', '');
 
-const prompt = color('blue', '» ', true);
+// prompt start
+const prompt = color('blue', '»', true) + ' ';
+
+// prompt state
 let inputBuffer = '';
 let cursorPos = 0;
+
+//
+// prompt drawing
+//
 
 function clearLine(): void {
   process.stdout.write('\r\x1b[K');
@@ -19,17 +25,20 @@ function clearLine(): void {
 function redrawInput(): void {
   clearLine();
   process.stdout.write(prompt + inputBuffer);
-  // Position cursor
   const cursorOffset = inputBuffer.length - cursorPos;
   if (cursorOffset > 0) {
     process.stdout.write(`\x1b[${cursorOffset}D`);
   }
 }
 
-function renderMarkdown(content: string, opts: Options = {}): string {
-  const renderer = createRenderer(opts);
-  marked.use({ renderer });
-  return marked(content) as string;
+//
+// start/stop routines
+//
+
+function startup(): void {
+  process.stdin.setRawMode(true);
+  process.stdout.write('\x1b[>1u'); // enable kitty keyboard protocol
+  process.stdout.write(prompt);
 }
 
 function cleanup(): void {
@@ -39,11 +48,9 @@ function cleanup(): void {
   process.exit(0);
 }
 
-process.on('SIGINT', cleanup);
-
-process.stdin.setRawMode(true);
-process.stdout.write('\x1b[>1u'); // enable kitty keyboard protocol
-process.stdout.write(prompt);
+//
+// input handler
+//
 
 process.stdin.on('data', (key: Buffer) => {
   const seq = key.toString();
@@ -55,7 +62,7 @@ process.stdin.on('data', (key: Buffer) => {
   } else if (seq === '\r') { // Enter - submit
     clearLine();
     if (inputBuffer.trim()) {
-      const rendered = renderMarkdown(inputBuffer);
+      const rendered = displayMarkdown(inputBuffer);
       process.stdout.write(rendered);
     }
     inputBuffer = '';
@@ -98,3 +105,10 @@ process.stdin.on('data', (key: Buffer) => {
     }
   }
 });
+
+//
+// engage
+//
+
+process.on('SIGINT', cleanup);
+startup();

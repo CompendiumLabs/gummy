@@ -3,26 +3,9 @@
 // Gummy - Markdown pager with embedded gum.jsx visualizations
 
 import { readFileSync } from 'fs';
-import { marked } from 'marked';
 import { program } from 'commander';
-import { createRenderer } from './renderer.js';
-import { parseGum, renderGum } from './parser.js';
-import { formatImage } from './kitty.js';
-import { type Options, type Theme, isTheme } from './types.js';
-
-function displayMarkdown(content: string, opts: Options = {}): void {
-  const renderer = createRenderer(opts);
-  marked.use({ renderer });
-  const output = marked(content) as string;
-  process.stdout.write(output);
-}
-
-function displayGum(code: string, opts: Options = {}): void {
-  const { theme, size, width, height } = opts
-  const elem = parseGum(code, { theme, size });
-  const png = renderGum(elem, { width, height });
-  process.stdout.write(formatImage(png));
-}
+import { type Theme, isTheme } from './types.js';
+import { displayMarkdown, displayGum } from './display.js';
 
 async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
@@ -51,7 +34,8 @@ program
     const content = file ? readFileSync(file, 'utf-8') : await readStdin();
     const displayer = jsx ? displayGum : displayMarkdown;
     const theme = validateTheme(theme0);
-    displayer(content, { width, height, theme, size });
+    const output = displayer(content, { width, height, theme, size });
+    process.stdout.write(output);
   });
 
 program.parseAsync().catch((err: Error) => {
