@@ -1,6 +1,7 @@
 // Shared types for gummy
 
-type Theme = 'light' | 'dark';
+const THEMES = ['light', 'dark'] as const;
+type Theme = typeof THEMES[number];
 type Size = number | [number, number];
 
 interface Options {
@@ -11,5 +12,8 @@ interface Options {
   font?: any;
 }
 
-export { Options, Theme, Size }
+function isTheme(value: string): value is Theme {
+  return THEMES.includes(value as Theme);
+}
 
+export { Options, Theme, Size, isTheme }

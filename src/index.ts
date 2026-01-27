@@ -8,7 +8,7 @@ import { program } from 'commander';
 import { createRenderer } from './renderer.js';
 import { parseGum, renderGum } from './parser.js';
 import { formatImage } from './kitty.js';
-import type { Options, Theme } from './types.js';
+import { type Options, type Theme, isTheme } from './types.js';
 
 function displayMarkdown(content: string, opts: Options = {}): void {
   const renderer = createRenderer(opts);
@@ -32,11 +32,9 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf-8');
 }
 
-function validateTheme(theme: string | undefined) : Theme {
-  const THEMES = ['dark', 'light']
-  if (theme != null && !THEMES.includes(theme)) {
-    throw new Error(`Invalid theme: ${theme}`);
-  }
+function validateTheme(theme: string | undefined) : Theme | undefined {
+  if (theme == null) return;
+  if (!isTheme(theme)) throw new Error(`Invalid theme: ${theme}`);
   return theme as Theme;
 }
 
