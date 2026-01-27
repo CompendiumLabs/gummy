@@ -13,17 +13,17 @@ const COLORS: Record<string, number> = {
   red: 91,
 };
 
-export function color(name: string, text: string, bold = false): string {
+function color(name: string, text: string, bold = false): string {
   const code = COLORS[name] || 0;
   const prefix = bold ? '\x1b[1m' : '';
   return `${prefix}\x1b[${code}m${text}\x1b[0m`;
 }
 
-export function encodeImage(pngBuffer: Buffer): string {
+function encodeImage(pngBuffer: Buffer): string {
   return pngBuffer.toString('base64');
 }
 
-export function formatImage(pngBuffer: Buffer): string {
+function formatImage(pngBuffer: Buffer): string {
   const base64 = encodeImage(pngBuffer);
   let result = '';
 
@@ -40,3 +40,5 @@ export function formatImage(pngBuffer: Buffer): string {
 
   return result + '\n';
 }
+
+export { color, encodeImage, formatImage }

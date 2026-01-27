@@ -4,10 +4,11 @@ import { marked } from 'marked';
 import { appendFileSync, writeFileSync } from 'fs';
 import { createRenderer } from '../src/renderer.js';
 import type { Options } from '../src/types.js';
+import { color } from '../src/kitty.ts';
 
 writeFileSync('input.txt', ''); // Clear on start
 
-const prompt = '> ';
+const prompt = color('blue', '» ', true);
 let inputBuffer = '';
 let cursorPos = 0;
 
