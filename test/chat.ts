@@ -1,18 +1,103 @@
 #!/usr/bin/env npx tsx
 
 import { appendFileSync, writeFileSync } from 'fs';
-import { displayMarkdown } from '../src/display.js';
+import { displayMarkdown, displayGum } from '../src/display.js';
 import { color } from '../src/kitty.ts';
 
 // nuke log file
 writeFileSync('input.txt', '');
 
-// prompt start
-const prompt = color('blue', '»', true) + ' ';
-
+//
 // prompt state
-let inputBuffer = '';
-let cursorPos = 0;
+//
+
+class StringBuffer {
+  private buffer: string;
+  private cursorPos: number;
+
+  constructor() {
+    this.buffer = '';
+    this.cursorPos = 0;
+  }
+
+  get(): string {
+    return this.buffer;
+  }
+
+  len(): number {
+    return this.buffer.length;
+  }
+
+  pos(): number {
+    return this.cursorPos;
+  }
+
+  atStart(): boolean {
+    return this.cursorPos === 0;
+  }
+
+  atEnd(): boolean {
+    return this.cursorPos === this.buffer.length;
+  }
+
+  clear(): void {
+    this.buffer = '';
+    this.cursorPos = 0;
+  }
+
+  moveHome(): void {
+    this.cursorPos = 0;
+  }
+
+  moveEnd(): void {
+    this.cursorPos = this.buffer.length;
+  }
+
+  moveLeft(): void {
+    this.cursorPos--;
+  }
+
+  moveRight(): void {
+    this.cursorPos++;
+  }
+
+  insert(char: string): void {
+    this.buffer = this.buffer.slice(0, this.cursorPos) + char + this.buffer.slice(this.cursorPos);
+    this.cursorPos++;
+  }
+
+  delete(): void {
+    this.buffer = this.buffer.slice(0, this.cursorPos - 1) + this.buffer.slice(this.cursorPos);
+    this.cursorPos--;
+  }
+}
+
+//
+// gum header
+//
+
+const logo = `
+<Box margin={0.05} rounded clip border={10} border_stroke="#444">
+  <HStack>
+    <Box padding={0.2} fill="#444">
+      <Text color={white}>GUM</Text>
+    </Box>
+    <Box padding={0.3} fill="#222">
+      <Graph ylim={[-1.5, 1.5]} aspect={2}>
+        <SymPoints
+          fy={sin} xlim={[0, 2*pi]} size={0.5} N={30}
+          shape={x => <Square rounded={0.1} spin={r2d*x} stroke-width={3} />}
+        />
+      </Graph>
+    </Box>
+  </HStack>
+</Box>
+`
+
+// prompt start
+const header = displayGum(logo, { height: 250 });
+const prompt = color('blue', '»', true) + ' ';
+const buffer = new StringBuffer();
 
 //
 // prompt drawing
@@ -24,8 +109,8 @@ function clearLine(): void {
 
 function redrawInput(): void {
   clearLine();
-  process.stdout.write(prompt + inputBuffer);
-  const cursorOffset = inputBuffer.length - cursorPos;
+  process.stdout.write(prompt + buffer.get());
+  const cursorOffset = buffer.len() - buffer.pos();
   if (cursorOffset > 0) {
     process.stdout.write(`\x1b[${cursorOffset}D`);
   }
@@ -38,6 +123,7 @@ function redrawInput(): void {
 function startup(): void {
   process.stdin.setRawMode(true);
   process.stdout.write('\x1b[>1u'); // enable kitty keyboard protocol
+  process.stdout.write(header);
   process.stdout.write(prompt);
 }
 
@@ -54,6 +140,8 @@ function cleanup(): void {
 
 process.stdin.on('data', (key: Buffer) => {
   const seq = key.toString();
+
+  // log the input to a file
   const hex = [...key].map(b => b.toString(16).padStart(2, '0')).join(' ');
   appendFileSync('input.txt', `${JSON.stringify(seq)} [${hex}]\n`);
 
@@ -61,44 +149,42 @@ process.stdin.on('data', (key: Buffer) => {
     cleanup();
   } else if (seq === '\r') { // Enter - submit
     clearLine();
-    if (inputBuffer.trim()) {
-      const rendered = displayMarkdown(inputBuffer);
+    const input = buffer.get();
+    if (input.trim()) {
+      const rendered = displayMarkdown(input);
       process.stdout.write(rendered);
     }
-    inputBuffer = '';
-    cursorPos = 0;
+    buffer.clear();
     process.stdout.write(prompt);
   } else if (seq === '\x1b[D') { // Left arrow
-    if (cursorPos > 0) {
-      cursorPos--;
+    if (buffer.pos() > 0) {
+      buffer.moveLeft();
       process.stdout.write(seq);
     }
   } else if (seq === '\x1b[C') { // Right arrow
-    if (cursorPos < inputBuffer.length) {
-      cursorPos++;
+    if (buffer.pos() < buffer.len()) {
+      buffer.moveRight();
       process.stdout.write(seq);
     }
   } else if (seq === '\x1b[H' || seq === '\x1b[1~') { // Home
-    cursorPos = 0;
+    buffer.moveHome();
     redrawInput();
   } else if (seq === '\x1b[F' || seq === '\x1b[4~') { // End
-    cursorPos = inputBuffer.length;
+    buffer.moveEnd();
     redrawInput();
   } else if (seq === '\x7f' || seq === '\b') { // Backspace
-    if (cursorPos > 0) {
-      inputBuffer = inputBuffer.slice(0, cursorPos - 1) + inputBuffer.slice(cursorPos);
-      cursorPos--;
+    if (!buffer.atStart()) {
+      buffer.delete();
       redrawInput();
     }
   } else if (seq === '\x1b[3~') { // Delete
-    if (cursorPos < inputBuffer.length) {
-      inputBuffer = inputBuffer.slice(0, cursorPos) + inputBuffer.slice(cursorPos + 1);
+    if (!buffer.atEnd()) {
+      buffer.delete();
       redrawInput();
     }
   } else if (seq.length === 1 && seq >= ' ' && seq <= '~') { // Printable ASCII
-    inputBuffer = inputBuffer.slice(0, cursorPos) + seq + inputBuffer.slice(cursorPos);
-    cursorPos++;
-    if (cursorPos === inputBuffer.length) {
+    buffer.insert(seq);
+    if (buffer.atEnd()) {
       process.stdout.write(seq);
     } else {
       redrawInput();
