@@ -8,7 +8,7 @@ import { program } from 'commander';
 import { createRenderer } from './renderer.js';
 import { parseGum, renderGum } from './parser.js';
 import { formatImage } from './kitty.js';
-import type { Options, Theme, Size } from './types.js';
+import type { Options, Theme } from './types.js';
 
 function displayMarkdown(content: string, opts: Options = {}): void {
   const renderer = createRenderer(opts);
@@ -32,6 +32,14 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf-8');
 }
 
+function validateTheme(theme: string | undefined) : Theme {
+  const THEMES = ['dark', 'light']
+  if (theme != null && !THEMES.includes(theme)) {
+    throw new Error(`Invalid theme: ${theme}`);
+  }
+  return theme as Theme;
+}
+
 program
   .name('gummy')
   .description('Markdown pager with embedded gum.jsx visualizations')
@@ -41,9 +49,10 @@ program
   .option('-t, --theme <name>', 'Theme to use for gum.jsx')
   .option('-s, --size <pixels>', 'Coordinate size for SVG', parseInt)
   .option('-j, --jsx', 'Render pure gum.jsx', false)
-  .action(async (file: string | undefined, { jsx, width, height, theme, size }: { jsx: boolean; width?: number; height?: number, theme?: string, size?: number }) => {
+  .action(async (file: string | undefined, { jsx, width, height, theme: theme0, size }: { jsx: boolean; width?: number; height?: number, theme?: string, size?: number }) => {
     const content = file ? readFileSync(file, 'utf-8') : await readStdin();
     const displayer = jsx ? displayGum : displayMarkdown;
+    const theme = validateTheme(theme0);
     displayer(content, { width, height, theme, size });
   });
 

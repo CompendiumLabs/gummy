@@ -25,7 +25,7 @@ type FitTo =
   | { mode: 'height'; value: number };
 
 // Parse gum.jsx into an Svg element
-export function parseGum(code: string, { theme = 'dark', size = 750 } : { theme?: Theme, size?: Size }): Svg {
+export function parseGum(code: string, { theme = 'dark', size = [1000, 500] } : { theme?: Theme, size?: Size }): Svg {
   return evaluateGum(code, { theme, size });
 }
 
