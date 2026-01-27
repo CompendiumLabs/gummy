@@ -7,78 +7,22 @@ import type { Options } from '../src/types.js';
 
 writeFileSync('input.txt', ''); // Clear on start
 
-const promptHeight = 7;
-const promptPrefix = '> ';
-let rows = process.stdout.rows ?? 24;
-let cols = process.stdout.columns ?? 80;
-
+const prompt = '> ';
 let inputBuffer = '';
 let cursorPos = 0;
 
-function setScrollRegion(): void {
-  process.stdout.write(`\x1b[1;${rows - promptHeight}r`);
-}
-
-function resetScrollRegion(): void {
-  process.stdout.write(`\x1b[r`);
-}
-
-function moveTo(row: number, col: number): void {
-  process.stdout.write(`\x1b[${row};${col}H`);
-}
-
-function clearPromptArea(): void {
-  moveTo(rows - promptHeight + 1, 1);
-  process.stdout.write(`\x1b[J`);
-}
-
-function drawPromptBox(): void {
-  clearPromptArea();
-  const line = '─'.repeat(cols);
-  moveTo(rows - promptHeight + 1, 1);
-  process.stdout.write(line);
-  redrawInput();
+function clearLine(): void {
+  process.stdout.write('\r\x1b[K');
 }
 
 function redrawInput(): void {
-  // Clear input area (lines 2+ of prompt box)
-  for (let i = 2; i <= promptHeight; i++) {
-    moveTo(rows - promptHeight + i, 1);
-    process.stdout.write(' '.repeat(cols));
-  }
-
-  // Draw input with prefix
-  const lines = inputBuffer.split('\n');
-  const maxLines = promptHeight - 1;
-
-  for (let i = 0; i < Math.min(lines.length, maxLines); i++) {
-    moveTo(rows - promptHeight + 2 + i, 1);
-    const prefix = i === 0 ? promptPrefix : '  ';
-    process.stdout.write(prefix + lines[i]);
-  }
-
+  clearLine();
+  process.stdout.write(prompt + inputBuffer);
   // Position cursor
-  let charsBeforeCursor = cursorPos;
-  let cursorLine = 0;
-  let cursorCol = promptPrefix.length;
-
-  for (let i = 0; i < lines.length; i++) {
-    if (charsBeforeCursor <= lines[i].length) {
-      cursorLine = i;
-      cursorCol = (i === 0 ? promptPrefix.length : 2) + charsBeforeCursor;
-      break;
-    }
-    charsBeforeCursor -= lines[i].length + 1; // +1 for newline
+  const cursorOffset = inputBuffer.length - cursorPos;
+  if (cursorOffset > 0) {
+    process.stdout.write(`\x1b[${cursorOffset}D`);
   }
-
-  moveTo(rows - promptHeight + 2 + cursorLine, cursorCol + 1);
-}
-
-function addToScrollRegion(text: string): void {
-  process.stdout.write(`\x1b[s`); // save cursor
-  moveTo(rows - promptHeight, 1); // bottom of scroll region
-  process.stdout.write(text);
-  process.stdout.write(`\x1b[u`); // restore cursor
 }
 
 function renderMarkdown(content: string, opts: Options = {}): string {
@@ -87,34 +31,18 @@ function renderMarkdown(content: string, opts: Options = {}): string {
   return marked(content) as string;
 }
 
-function setup(): void {
-  process.stdout.write('\x1b[?1049h'); // alternate screen buffer
-  process.stdout.write('\x1b[>1u'); // enable kitty keyboard protocol
-  process.stdout.write('\x1b[2J'); // clear screen
-  setScrollRegion();
-  moveTo(1, 1);
-  drawPromptBox();
-}
-
 function cleanup(): void {
+  process.stdout.write('\n');
   process.stdout.write('\x1b[<u'); // disable kitty keyboard protocol
-  resetScrollRegion();
-  process.stdout.write('\x1b[?1049l'); // exit alternate screen buffer
+  process.stdin.setRawMode(false);
   process.exit(0);
 }
-
-// Handle resize
-process.stdout.on('resize', () => {
-  rows = process.stdout.rows ?? 24;
-  cols = process.stdout.columns ?? 80;
-  resetScrollRegion();
-  setScrollRegion();
-  drawPromptBox();
-});
 
 process.on('SIGINT', cleanup);
 
 process.stdin.setRawMode(true);
+process.stdout.write('\x1b[>1u'); // enable kitty keyboard protocol
+process.stdout.write(prompt);
 
 process.stdin.on('data', (key: Buffer) => {
   const seq = key.toString();
@@ -123,27 +51,24 @@ process.stdin.on('data', (key: Buffer) => {
 
   if (seq === '\x03' || seq === '\x1b[99;5u') { // Ctrl+C
     cleanup();
-  } else if (seq === '\n') { // Shift+Enter - newline
-    inputBuffer = inputBuffer.slice(0, cursorPos) + '\n' + inputBuffer.slice(cursorPos);
-    cursorPos++;
-    redrawInput();
   } else if (seq === '\r') { // Enter - submit
+    clearLine();
     if (inputBuffer.trim()) {
       const rendered = renderMarkdown(inputBuffer);
-      addToScrollRegion(rendered);
+      process.stdout.write(rendered);
     }
     inputBuffer = '';
     cursorPos = 0;
-    drawPromptBox();
+    process.stdout.write(prompt);
   } else if (seq === '\x1b[D') { // Left arrow
     if (cursorPos > 0) {
       cursorPos--;
-      redrawInput();
+      process.stdout.write(seq);
     }
   } else if (seq === '\x1b[C') { // Right arrow
     if (cursorPos < inputBuffer.length) {
       cursorPos++;
-      redrawInput();
+      process.stdout.write(seq);
     }
   } else if (seq === '\x1b[H' || seq === '\x1b[1~') { // Home
     cursorPos = 0;
@@ -165,8 +90,10 @@ process.stdin.on('data', (key: Buffer) => {
   } else if (seq.length === 1 && seq >= ' ' && seq <= '~') { // Printable ASCII
     inputBuffer = inputBuffer.slice(0, cursorPos) + seq + inputBuffer.slice(cursorPos);
     cursorPos++;
-    redrawInput();
+    if (cursorPos === inputBuffer.length) {
+      process.stdout.write(seq);
+    } else {
+      redrawInput();
+    }
   }
 });
-
-setup();
