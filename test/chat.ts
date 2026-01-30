@@ -160,7 +160,7 @@ const logo = `
 
 // prompt start
 const header = displayGum(logo, { size: 1000, height: 250 })
-const prompt = ansi('»', { color: 'blue', bold: true }) + ' '
+const prompt = ansi('»', { fg: 'blue', bold: true }) + ' '
 const buffer = new StringBuffer()
 
 //
@@ -260,11 +260,11 @@ process.stdin.on('data', async (data: Buffer) => {
       break
     case 'Enter':
       clearLine()
-      const input = buffer.get()
-      if (input.trim()) {
-        const input_render = displayMarkdown(input)
-        process.stdout.write(input_render)
-        const reply = await chat.reply(input_render)
+      const input = buffer.get().trim()
+      if (input) {
+        const input_line = ansi(input, { bg: 'gray' })
+        process.stdout.write(input_line + '\n\n')
+        const reply = await chat.reply(input)
         const reply_render = displayMarkdown(reply)
         process.stdout.write(reply_render)
       }

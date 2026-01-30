@@ -39,7 +39,7 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
       const text = this.parser.parseInline(tokens)
       const prefix = '#'.repeat(depth)
       const clr = HEADING_COLORS[depth - 1] || 'magenta'
-      return ansi(`${prefix} ${text}`, { color: clr, bold: true }) + '\n\n'
+      return ansi(`${prefix} ${text}`, { fg: clr, bold: true }) + '\n\n'
     },
 
     paragraph({ tokens }: Tokens.Paragraph): string {
@@ -63,7 +63,7 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
         }
       }
 
-      return `\`\`\`${ansi(baseLang, { color: 'blue' })}\n${ansi(text, { color: 'gray' })}\n\`\`\`\n\n`
+      return `\`\`\`${ansi(baseLang, { fg: 'blue' })}\n${ansi(text, { fg: 'gray' })}\n\`\`\`\n\n`
     },
 
     blockquote({ tokens }: Tokens.Blockquote): string {
@@ -91,16 +91,16 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
 
     em({ tokens }: Tokens.Em): string {
       const text = this.parser.parseInline(tokens)
-      return ansi(`_${text}_`, { color: 'gray', italic: true, bold: true })
+      return ansi(`_${text}_`, { fg: 'gray', italic: true, bold: true })
     },
 
     codespan({ text }: Tokens.Codespan): string {
-      return `\`${ansi(text, { color: 'blue' })}\``
+      return `\`${ansi(text, { fg: 'blue' })}\``
     },
 
     link({ href, tokens }: Tokens.Link): string {
       const text = this.parser.parseInline(tokens)
-      return `[${ansi(text, { color: 'blue' })}](${ansi(href, { color: 'gray' })}`
+      return `[${ansi(text, { fg: 'blue' })}](${ansi(href, { fg: 'gray' })}`
     },
 
     image({ href, text }: Tokens.Image): string {
@@ -114,11 +114,11 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
           const png = ext === 'svg' ? rasterizeSvg(data, opts) : data
           return formatImage(png)
         } catch {
-          return ansi(`[Unable to load: ${href}]`, { color: 'gray' })
+          return ansi(`[Unable to load: ${href}]`, { fg: 'gray' })
         }
       }
 
-      return ansi(`[External URL: ${href}]`, { color: 'gray' })
+      return ansi(`[External URL: ${href}]`, { fg: 'gray' })
     },
 
     text(token: Tokens.Text | Tokens.Escape): string {
