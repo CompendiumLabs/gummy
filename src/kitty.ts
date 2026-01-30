@@ -4,14 +4,12 @@
 const CHUNK_SIZE = 4096
 
 // ANSI color codes
-const FG_COLORS: Record<string, number> = { gray: 90, red: 91, green: 92, yellow: 93, blue: 94, magenta: 95, cyan: 96, white: 97 }
-const BG_COLORS: Record<string, number> = { gray: 100, red: 101, green: 102, yellow: 103, blue: 104, magenta: 105, cyan: 106, white: 107 }
+const ANSI_FG: Record<string, number> = { gray: 90, red: 91, green: 92, yellow: 93, blue: 94, magenta: 95, cyan: 96, white: 97 }
+const ANSI_BG: Record<string, number> = { gray: 100, red: 101, green: 102, yellow: 103, blue: 104, magenta: 105, cyan: 106, white: 107 }
 
-function ansi(text: string, { fg = null, bg = null, bold = false, italic = false }: { fg?: string | null, bg?: string | null, bold?: boolean, italic?: boolean } = {}): string {
-  const fg_code = fg != null ? (FG_COLORS[fg] ?? 0) : 0
-  const bg_code = bg != null ? (BG_COLORS[bg] ?? 0) : 0
-  const pre_fg = fg_code > 0 ? `\x1b[${fg_code}m` : ''
-  const pre_bg = bg_code > 0 ? `\x1b[${bg_code}m` : ''
+function ansi(text: string, { fg = null, bg = null, bold = false, italic = false }: { fg?: number | null, bg?: number | null, bold?: boolean, italic?: boolean } = {}): string {
+  const pre_fg = fg != null ? `\x1b[38;5;${fg}m` : ''
+  const pre_bg = bg != null ? `\x1b[48;5;${bg}m` : ''
   const pre_bold = bold ? '\x1b[1m' : ''
   const pre_italic = italic ? '\x1b[3m' : ''
   const post_reset = '\x1b[0m'

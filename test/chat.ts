@@ -160,7 +160,7 @@ const logo = `
 
 // prompt start
 const header = displayGum(logo, { size: 1000, height: 250 })
-const prompt = ansi('»', { fg: 'blue', bold: true }) + ' '
+const prompt = ansi('»', { fg: 33, bold: true }) + ' '
 const buffer = new StringBuffer()
 
 //
@@ -262,7 +262,7 @@ process.stdin.on('data', async (data: Buffer) => {
       clearLine()
       const input = buffer.get().trim()
       if (input) {
-        const input_line = ansi(input, { bg: 'gray' })
+        const input_line = ansi(input, { bg: 242 })
         process.stdout.write(input_line + '\n\n')
         const reply = await chat.reply(input)
         const reply_render = displayMarkdown(reply)
