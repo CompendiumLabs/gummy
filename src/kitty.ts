@@ -5,18 +5,23 @@ const CHUNK_SIZE = 4096;
 
 // ANSI color codes
 const COLORS: Record<string, number> = {
-  magenta: 95,
+  gray: 90,
+  red: 91,
   green: 92,
-  cyan: 96,
   yellow: 93,
   blue: 94,
-  red: 91,
+  magenta: 95,
+  cyan: 96,
+  white: 97,
 };
 
-function color(name: string, text: string, bold = false): string {
-  const code = COLORS[name] || 0;
-  const prefix = bold ? '\x1b[1m' : '';
-  return `${prefix}\x1b[${code}m${text}\x1b[0m`;
+function ansi(text: string, { color = null, bold = false, italic = false }: { color?: string | null, bold?: boolean, italic?: boolean } = {}): string {
+  const color_code = color != null ? (COLORS[color] ?? 0) : 0;
+  const pre_color = color_code > 0 ? `\x1b[${color_code}m` : '';
+  const pre_bold = bold ? '\x1b[1m' : '';
+  const pre_italic = italic ? '\x1b[3m' : '';
+  const post_reset = '\x1b[0m';
+  return `${pre_bold}${pre_italic}${pre_color}${text}${post_reset}`;
 }
 
 function encodeImage(pngBuffer: Buffer): string {
@@ -41,4 +46,4 @@ function formatImage(pngBuffer: Buffer): string {
   return result + '\n';
 }
 
-export { color, encodeImage, formatImage }
+export { ansi, encodeImage, formatImage }

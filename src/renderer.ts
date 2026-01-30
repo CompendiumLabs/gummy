@@ -3,7 +3,7 @@
 import { readFileSync } from 'fs';
 import type { Tokens, RendererObject } from 'marked';
 import { parseGum, renderGum, rasterizeSvg } from './parser.js';
-import { formatImage, color } from './kitty.js';
+import { formatImage, ansi } from './kitty.js';
 import type { Options } from './types.js';
 
 const HEADING_COLORS = ['magenta', 'blue', 'green', 'red', 'cyan', 'yellow'];
@@ -39,7 +39,7 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
       const text = this.parser.parseInline(tokens);
       const prefix = '#'.repeat(depth);
       const clr = HEADING_COLORS[depth - 1] || 'magenta';
-      return color(clr, `${prefix} ${text}`, true) + '\n\n';
+      return ansi(`${prefix} ${text}`, { color: clr, bold: true }) + '\n\n';
     },
 
     paragraph({ tokens }: Tokens.Paragraph): string {
@@ -63,25 +63,20 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
         }
       }
 
-      return `\`\`\`${baseLang}\n${text}\n\`\`\`\n\n`;
+      return `\`\`\`${ansi(baseLang, { color: 'blue' })}\n${ansi(text, { color: 'gray' })}\n\`\`\`\n\n`;
     },
 
     blockquote({ tokens }: Tokens.Blockquote): string {
-      const text = this.parser.parse(tokens).trim().replace(/\n/g, '\n> ');
-      return `> ${text}\n\n`;
+      const text = this.parser.parse(tokens).trim().replace(/\n/g, '\n > ');
+      return ` > ${text}\n\n`;
     },
 
     list({ items, ordered }: Tokens.List): string {
       return items.map((item: Tokens.ListItem, i: number) => {
-        const bullet = ordered ? `${i + 1}. ` : '- ';
+        const bullet = ordered ? ` ${i + 1}. ` : ' — ';
         const text = this.parser.parse(item.tokens).trim();
         return bullet + text;
       }).join('\n') + '\n\n';
-    },
-
-    listitem({ tokens }: Tokens.ListItem): string {
-      const text = this.parser.parse(tokens).trim();
-      return `- ${text}\n`;
     },
 
     hr(): string {
@@ -91,21 +86,21 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
     // Inline elements
     strong({ tokens }: Tokens.Strong): string {
       const text = this.parser.parseInline(tokens);
-      return `**${text}**`;
+      return ansi(`**${text}**`, { bold: true });
     },
 
     em({ tokens }: Tokens.Em): string {
       const text = this.parser.parseInline(tokens);
-      return `_${text}_`;
+      return ansi(`_${text}_`, { color: 'gray', italic: true, bold: true });
     },
 
     codespan({ text }: Tokens.Codespan): string {
-      return `\`${text}\``;
+      return `\`${ansi(text, { color: 'blue' })}\``;
     },
 
     link({ href, tokens }: Tokens.Link): string {
       const text = this.parser.parseInline(tokens);
-      return `[${text}](${href})`;
+      return `[${ansi(text, { color: 'blue' })}](${ansi(href, { color: 'gray' })}`;
     },
 
     image({ href, text }: Tokens.Image): string {
@@ -119,15 +114,19 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
           const png = ext === 'svg' ? rasterizeSvg(data, opts) : data;
           return formatImage(png);
         } catch {
-          return `Unable to load: ${href}\n\n`;
+          return ansi(`[Unable to load: ${href}]`, { color: 'gray' });
         }
       }
 
-      return `External URL: ${href}\n\n`;
+      return ansi(`[External URL: ${href}]`, { color: 'gray' });
     },
 
     text(token: Tokens.Text | Tokens.Escape): string {
-      return token.text;
+      if ('tokens' in token) {
+        return this.parser.parseInline(token.tokens ?? []);
+      } else {
+        return token.text;
+      }
     },
 
     html(token: Tokens.HTML | Tokens.Tag): string {

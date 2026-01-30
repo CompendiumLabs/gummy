@@ -8,10 +8,13 @@
     "gummy": "src/index.ts"
   },
   "scripts": {
-    "start": "tsx src/index.ts"
+    "start": "tsx src/index.ts",
+    "skill": "tsx scripts/skill.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.0-beta.98",
     "@resvg/resvg-js": "^2.6.0",
+    "ai": "^6.0.0-beta.169",
     "commander": "^14.0.2",
     "gum-jsx": "file:../gum.jsx",
     "marked": "^17.0.1"

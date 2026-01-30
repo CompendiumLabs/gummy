@@ -2,7 +2,8 @@
 
 import { createRequire } from 'module';
 import { Resvg } from '@resvg/resvg-js';
-import { evaluateGum, type Svg } from 'gum-jsx/eval';
+import { evaluateGum } from 'gum-jsx/eval';
+import type { Svg } from 'gum-jsx';
 import type { Options, Theme, Size } from './types.js';
 
 // Resolve font paths from gum-jsx package

@@ -1,8 +1,11 @@
 #!/usr/bin/env npx tsx
 
-import { appendFileSync, writeFileSync } from 'fs';
+import { appendFileSync, writeFileSync, readFileSync } from 'fs';
 import { displayMarkdown, displayGum } from '../src/display.js';
-import { color } from '../src/kitty.ts';
+import { ansi } from '../src/kitty.ts';
+
+import { generateText, stepCountIs, type UserModelMessage, type ModelMessage, type SystemModelMessage } from 'ai'
+import { createAnthropic } from '@ai-sdk/anthropic'
 
 // nuke log file
 writeFileSync('input.txt', '');
@@ -73,6 +76,71 @@ class StringBuffer {
 }
 
 //
+// chat client
+//
+
+type MessageHistory = ModelMessage[];
+
+// environment variables
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const GUM_JSX_SKILL_ID = process.env.GUM_JSX_SKILL_ID;
+
+// make the model client
+const client = createAnthropic({ apiKey: ANTHROPIC_API_KEY })
+const model = client('claude-sonnet-4-5-20250929')
+
+// load system prompt
+const system = readFileSync('prompt/system.md', 'utf8').trim();
+
+// make the gum skill
+const gum_skill = {
+  type: 'custom',
+  skillId: GUM_JSX_SKILL_ID,
+  version: 'latest',
+}
+
+// this is a functional vanilla client class
+class ChatClient {
+  messages: MessageHistory
+
+  constructor() {
+    this.messages = [{ role: 'system', content: system } as SystemModelMessage];
+  }
+
+  async reply(prompt: string) : Promise<string> {
+    // create the user message
+    const user = { role: 'user', content: prompt } as UserModelMessage;
+
+    // submit the request
+    const response = await generateText({
+      model,
+      prompt: [ ...this.messages, user ],
+      stopWhen: stepCountIs(25),
+      headers: {
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      providerOptions: {
+        anthropic: {
+          container: {
+            skills: [ gum_skill ],
+          },
+        },
+      },
+    })
+
+    // update the message history
+    const messages = response.response?.messages ?? [];
+    this.messages = [ ...this.messages, user, ...messages ];
+
+    // return the response text
+    return response.text;
+  }
+}
+
+// make the chat client
+const chat = new ChatClient();
+
+//
 // gum header
 //
 
@@ -95,8 +163,8 @@ const logo = `
 `
 
 // prompt start
-const header = displayGum(logo, { height: 250 });
-const prompt = color('blue', '»', true) + ' ';
+const header = displayGum(logo, { size: 1000, height: 250 });
+const prompt = ansi('»', { color: 'blue', bold: true }) + ' ';
 const buffer = new StringBuffer();
 
 //
@@ -135,60 +203,121 @@ function cleanup(): void {
 }
 
 //
+// key parsing (handles both legacy and Kitty keyboard protocol)
+//
+
+type KeyId = 'CtrlC' | 'Enter' | 'Left' | 'Right' | 'Home' | 'End' | 'Backspace' | 'Delete' | 'Char';
+
+type ParsedKey = { key: 'Char'; char: string } | { key: Exclude<KeyId, 'Char'> } | null;
+
+function parseKey(seq: string): ParsedKey {
+  // Ctrl+C
+  if (seq === '\x03' || /^\x1b\[99;\d+u$/.test(seq)) {
+    return { key: 'CtrlC' };
+  }
+  // Enter
+  if (seq === '\r' || /^\x1b\[13(;\d+)?u$/.test(seq)) {
+    return { key: 'Enter' };
+  }
+  // Left arrow
+  if (seq === '\x1b[D' || /^\x1b\[1;\d+D$/.test(seq)) {
+    return { key: 'Left' };
+  }
+  // Right arrow
+  if (seq === '\x1b[C' || /^\x1b\[1;\d+C$/.test(seq)) {
+    return { key: 'Right' };
+  }
+  // Home
+  if (seq === '\x1b[H' || seq === '\x1b[1~' || /^\x1b\[1;\d+H$/.test(seq)) {
+    return { key: 'Home' };
+  }
+  // End
+  if (seq === '\x1b[F' || seq === '\x1b[4~' || /^\x1b\[1;\d+F$/.test(seq)) {
+    return { key: 'End' };
+  }
+  // Backspace
+  if (seq === '\x7f' || seq === '\b' || /^\x1b\[127(;\d+)?u$/.test(seq)) {
+    return { key: 'Backspace' };
+  }
+  // Delete
+  if (seq === '\x1b[3~' || /^\x1b\[3;\d+~$/.test(seq)) {
+    return { key: 'Delete' };
+  }
+  // Printable ASCII
+  if (seq.length === 1 && seq >= ' ' && seq <= '~') {
+    return { key: 'Char', char: seq };
+  }
+  return null;
+}
+
+//
 // input handler
 //
 
-process.stdin.on('data', (key: Buffer) => {
-  const seq = key.toString();
+process.stdin.on('data', (data: Buffer) => {
+  const seq = data.toString();
+  const parsed = parseKey(seq);
 
   // log the input to a file
-  const hex = [...key].map(b => b.toString(16).padStart(2, '0')).join(' ');
-  appendFileSync('input.txt', `${JSON.stringify(seq)} [${hex}]\n`);
+  const hex = [...data].map(b => b.toString(16).padStart(2, '0')).join(' ');
+  appendFileSync('input.txt', `${JSON.stringify(seq)} [${hex}] → ${parsed?.key ?? '???'}\n`);
 
-  if (seq === '\x03' || seq === '\x1b[99;5u') { // Ctrl+C
-    cleanup();
-  } else if (seq === '\r') { // Enter - submit
-    clearLine();
-    const input = buffer.get();
-    if (input.trim()) {
-      const rendered = displayMarkdown(input);
-      process.stdout.write(rendered);
-    }
-    buffer.clear();
-    process.stdout.write(prompt);
-  } else if (seq === '\x1b[D') { // Left arrow
-    if (buffer.pos() > 0) {
-      buffer.moveLeft();
-      process.stdout.write(seq);
-    }
-  } else if (seq === '\x1b[C') { // Right arrow
-    if (buffer.pos() < buffer.len()) {
-      buffer.moveRight();
-      process.stdout.write(seq);
-    }
-  } else if (seq === '\x1b[H' || seq === '\x1b[1~') { // Home
-    buffer.moveHome();
-    redrawInput();
-  } else if (seq === '\x1b[F' || seq === '\x1b[4~') { // End
-    buffer.moveEnd();
-    redrawInput();
-  } else if (seq === '\x7f' || seq === '\b') { // Backspace
-    if (!buffer.atStart()) {
-      buffer.delete();
+  if (!parsed) return;
+
+  switch (parsed.key) {
+    case 'CtrlC':
+      cleanup();
+      break;
+    case 'Enter':
+      clearLine();
+      const input = buffer.get();
+      if (input.trim()) {
+        const rendered = displayMarkdown(input);
+        process.stdout.write(rendered);
+      }
+      buffer.clear();
+      process.stdout.write(prompt);
+      break;
+    case 'Left':
+      if (buffer.pos() > 0) {
+        buffer.moveLeft();
+        process.stdout.write('\x1b[D');
+      }
+      break;
+    case 'Right':
+      if (buffer.pos() < buffer.len()) {
+        buffer.moveRight();
+        process.stdout.write('\x1b[C');
+      }
+      break;
+    case 'Home':
+      buffer.moveHome();
       redrawInput();
-    }
-  } else if (seq === '\x1b[3~') { // Delete
-    if (!buffer.atEnd()) {
-      buffer.delete();
+      break;
+    case 'End':
+      buffer.moveEnd();
       redrawInput();
-    }
-  } else if (seq.length === 1 && seq >= ' ' && seq <= '~') { // Printable ASCII
-    buffer.insert(seq);
-    if (buffer.atEnd()) {
-      process.stdout.write(seq);
-    } else {
-      redrawInput();
-    }
+      break;
+    case 'Backspace':
+      if (!buffer.atStart()) {
+        buffer.delete();
+        redrawInput();
+      }
+      break;
+    case 'Delete':
+      if (!buffer.atEnd()) {
+        buffer.delete();
+        redrawInput();
+      }
+      break;
+    case 'Char':
+      buffer.insert(parsed.char);
+      if (buffer.atEnd()) {
+        process.stdout.write(parsed.char);
+      } else {
+        redrawInput();
+      }
+      break;
   }
 });
 
