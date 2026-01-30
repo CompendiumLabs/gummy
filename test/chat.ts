@@ -1,14 +1,16 @@
 #!/usr/bin/env npx tsx
 
-import { appendFileSync, writeFileSync, readFileSync } from 'fs'
+import { readFileSync } from 'fs'
 import { displayMarkdown, displayGum } from '../src/display'
 import { ansi } from '../src/kitty'
 
-import { generateText, stepCountIs, type UserModelMessage, type ModelMessage, type SystemModelMessage } from 'ai'
-import { createAnthropic } from '@ai-sdk/anthropic'
+import { generateText, stepCountIs, type UserModelMessage, type ModelMessage, type SystemModelMessage, type LanguageModel } from 'ai'
+import { createAnthropic, anthropic } from '@ai-sdk/anthropic'
 
-// nuke log file
-writeFileSync('input.txt', '')
+// environment variables
+const ANTHROPIC_MODEL = 'claude-sonnet-4-5-20250929'
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+const GUM_JSX_SKILL_ID = process.env.GUM_JSX_SKILL_ID
 
 //
 // prompt state
@@ -79,66 +81,60 @@ class StringBuffer {
 // chat client
 //
 
-type MessageHistory = ModelMessage[]
-
-// environment variables
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
-const GUM_JSX_SKILL_ID = process.env.GUM_JSX_SKILL_ID
-
-// make the model client
-const client = createAnthropic({ apiKey: ANTHROPIC_API_KEY })
-const model = client('claude-sonnet-4-5-20250929')
-
-// load system prompt
-const system = readFileSync('prompt/system.md', 'utf8').trim()
-
-// make the gum skill
-const gum_skill = {
-  type: 'custom',
-  skillId: GUM_JSX_SKILL_ID,
-  version: 'latest',
-}
-
-// this is a functional vanilla client class
 class ChatClient {
-  messages: MessageHistory
+  model: LanguageModel
+  messages: ModelMessage[]
+  tools: any | null
+  providerOptions: any | null
 
-  constructor() {
-    this.messages = [{ role: 'system', content: system } as SystemModelMessage]
+  constructor(model: LanguageModel, { system, skills }: { system?: string | null, skills?: any[] | null }) {
+    this.model = model
+    this.tools = skills ? {
+      code_execution: anthropic.tools.codeExecution_20250825(),
+    } : null
+    this.providerOptions = skills ? {
+      anthropic: {
+        container: { skills },
+      },
+     } : null
+    this.messages = system ? [
+      { role: 'system', content: system } as SystemModelMessage
+    ] : []
   }
 
-  async reply(prompt: string) : Promise<string> {
+  async reply(prompt: string, { steps = 5 }: { steps?: number } = { }) : Promise<string> {
     // create the user message
     const user = { role: 'user', content: prompt } as UserModelMessage
+    this.messages.push(user)
 
     // submit the request
     const response = await generateText({
       model,
-      prompt: [ ...this.messages, user ],
-      stopWhen: stepCountIs(25),
-      headers: {
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      providerOptions: {
-        anthropic: {
-          container: {
-            skills: [ gum_skill ],
-          },
-        },
-      },
+      prompt: this.messages,
+      tools: this.tools,
+      providerOptions: this.providerOptions,
+      stopWhen: stepCountIs(steps),
     })
 
     // update the message history
-    const messages = response.response?.messages ?? []
-    this.messages = [ ...this.messages, user, ...messages ]
+    const reply = response.response?.messages ?? []
+    this.messages.push(...reply)
 
     // return the response text
     return response.text
   }
 }
 
+// choose the model
+const client = createAnthropic({ apiKey: ANTHROPIC_API_KEY })
+const model = client(ANTHROPIC_MODEL)
+
+// make the gum skill
+const gum_skill = { type: 'custom', skillId: GUM_JSX_SKILL_ID, version: 'latest' }
+const system = readFileSync('prompt/system.md', 'utf8').trim()
+
 // make the chat client
-const chat = new ChatClient()
+const chat = new ChatClient(model, { system, skills: [ gum_skill ] })
 
 //
 // gum header
@@ -253,14 +249,9 @@ function parseKey(seq: string): ParsedKey {
 // input handler
 //
 
-process.stdin.on('data', (data: Buffer) => {
+process.stdin.on('data', async (data: Buffer) => {
   const seq = data.toString()
   const parsed = parseKey(seq)
-
-  // log the input to a file
-  const hex = [...data].map(b => b.toString(16).padStart(2, '0')).join(' ')
-  appendFileSync('input.txt', `${JSON.stringify(seq)} [${hex}] → ${parsed?.key ?? '???'}\n`)
-
   if (!parsed) return
 
   switch (parsed.key) {
@@ -271,8 +262,11 @@ process.stdin.on('data', (data: Buffer) => {
       clearLine()
       const input = buffer.get()
       if (input.trim()) {
-        const rendered = displayMarkdown(input)
-        process.stdout.write(rendered)
+        const input_render = displayMarkdown(input)
+        process.stdout.write(input_render)
+        const reply = await chat.reply(input_render)
+        const reply_render = displayMarkdown(reply)
+        process.stdout.write(reply_render)
       }
       buffer.clear()
       process.stdout.write(prompt)
