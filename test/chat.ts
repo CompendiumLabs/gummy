@@ -1,77 +1,77 @@
 #!/usr/bin/env npx tsx
 
-import { appendFileSync, writeFileSync, readFileSync } from 'fs';
-import { displayMarkdown, displayGum } from '../src/display.js';
-import { ansi } from '../src/kitty.ts';
+import { appendFileSync, writeFileSync, readFileSync } from 'fs'
+import { displayMarkdown, displayGum } from '../src/display'
+import { ansi } from '../src/kitty'
 
 import { generateText, stepCountIs, type UserModelMessage, type ModelMessage, type SystemModelMessage } from 'ai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 
 // nuke log file
-writeFileSync('input.txt', '');
+writeFileSync('input.txt', '')
 
 //
 // prompt state
 //
 
 class StringBuffer {
-  private buffer: string;
-  private cursorPos: number;
+  private buffer: string
+  private cursorPos: number
 
   constructor() {
-    this.buffer = '';
-    this.cursorPos = 0;
+    this.buffer = ''
+    this.cursorPos = 0
   }
 
   get(): string {
-    return this.buffer;
+    return this.buffer
   }
 
   len(): number {
-    return this.buffer.length;
+    return this.buffer.length
   }
 
   pos(): number {
-    return this.cursorPos;
+    return this.cursorPos
   }
 
   atStart(): boolean {
-    return this.cursorPos === 0;
+    return this.cursorPos === 0
   }
 
   atEnd(): boolean {
-    return this.cursorPos === this.buffer.length;
+    return this.cursorPos === this.buffer.length
   }
 
   clear(): void {
-    this.buffer = '';
-    this.cursorPos = 0;
+    this.buffer = ''
+    this.cursorPos = 0
   }
 
   moveHome(): void {
-    this.cursorPos = 0;
+    this.cursorPos = 0
   }
 
   moveEnd(): void {
-    this.cursorPos = this.buffer.length;
+    this.cursorPos = this.buffer.length
   }
 
   moveLeft(): void {
-    this.cursorPos--;
+    this.cursorPos--
   }
 
   moveRight(): void {
-    this.cursorPos++;
+    this.cursorPos++
   }
 
   insert(char: string): void {
-    this.buffer = this.buffer.slice(0, this.cursorPos) + char + this.buffer.slice(this.cursorPos);
-    this.cursorPos++;
+    this.buffer = this.buffer.slice(0, this.cursorPos) + char + this.buffer.slice(this.cursorPos)
+    this.cursorPos++
   }
 
   delete(): void {
-    this.buffer = this.buffer.slice(0, this.cursorPos - 1) + this.buffer.slice(this.cursorPos);
-    this.cursorPos--;
+    this.buffer = this.buffer.slice(0, this.cursorPos - 1) + this.buffer.slice(this.cursorPos)
+    this.cursorPos--
   }
 }
 
@@ -79,18 +79,18 @@ class StringBuffer {
 // chat client
 //
 
-type MessageHistory = ModelMessage[];
+type MessageHistory = ModelMessage[]
 
 // environment variables
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const GUM_JSX_SKILL_ID = process.env.GUM_JSX_SKILL_ID;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+const GUM_JSX_SKILL_ID = process.env.GUM_JSX_SKILL_ID
 
 // make the model client
 const client = createAnthropic({ apiKey: ANTHROPIC_API_KEY })
 const model = client('claude-sonnet-4-5-20250929')
 
 // load system prompt
-const system = readFileSync('prompt/system.md', 'utf8').trim();
+const system = readFileSync('prompt/system.md', 'utf8').trim()
 
 // make the gum skill
 const gum_skill = {
@@ -104,12 +104,12 @@ class ChatClient {
   messages: MessageHistory
 
   constructor() {
-    this.messages = [{ role: 'system', content: system } as SystemModelMessage];
+    this.messages = [{ role: 'system', content: system } as SystemModelMessage]
   }
 
   async reply(prompt: string) : Promise<string> {
     // create the user message
-    const user = { role: 'user', content: prompt } as UserModelMessage;
+    const user = { role: 'user', content: prompt } as UserModelMessage
 
     // submit the request
     const response = await generateText({
@@ -129,16 +129,16 @@ class ChatClient {
     })
 
     // update the message history
-    const messages = response.response?.messages ?? [];
-    this.messages = [ ...this.messages, user, ...messages ];
+    const messages = response.response?.messages ?? []
+    this.messages = [ ...this.messages, user, ...messages ]
 
     // return the response text
-    return response.text;
+    return response.text
   }
 }
 
 // make the chat client
-const chat = new ChatClient();
+const chat = new ChatClient()
 
 //
 // gum header
@@ -163,24 +163,24 @@ const logo = `
 `
 
 // prompt start
-const header = displayGum(logo, { size: 1000, height: 250 });
-const prompt = ansi('»', { color: 'blue', bold: true }) + ' ';
-const buffer = new StringBuffer();
+const header = displayGum(logo, { size: 1000, height: 250 })
+const prompt = ansi('»', { color: 'blue', bold: true }) + ' '
+const buffer = new StringBuffer()
 
 //
 // prompt drawing
 //
 
 function clearLine(): void {
-  process.stdout.write('\r\x1b[K');
+  process.stdout.write('\r\x1b[K')
 }
 
 function redrawInput(): void {
-  clearLine();
-  process.stdout.write(prompt + buffer.get());
-  const cursorOffset = buffer.len() - buffer.pos();
+  clearLine()
+  process.stdout.write(prompt + buffer.get())
+  const cursorOffset = buffer.len() - buffer.pos()
   if (cursorOffset > 0) {
-    process.stdout.write(`\x1b[${cursorOffset}D`);
+    process.stdout.write(`\x1b[${cursorOffset}D`)
   }
 }
 
@@ -189,65 +189,64 @@ function redrawInput(): void {
 //
 
 function startup(): void {
-  process.stdin.setRawMode(true);
-  process.stdout.write('\x1b[>1u'); // enable kitty keyboard protocol
-  process.stdout.write(header);
-  process.stdout.write(prompt);
+  process.stdin.setRawMode(true)
+  process.stdout.write('\x1b[>1u') // enable kitty keyboard protocol
+  process.stdout.write(header)
+  process.stdout.write(prompt)
 }
 
 function cleanup(): void {
-  process.stdout.write('\n');
-  process.stdout.write('\x1b[<u'); // disable kitty keyboard protocol
-  process.stdin.setRawMode(false);
-  process.exit(0);
+  process.stdout.write('\n')
+  process.stdout.write('\x1b[<u') // disable kitty keyboard protocol
+  process.stdin.setRawMode(false)
+  process.exit(0)
 }
 
 //
 // key parsing (handles both legacy and Kitty keyboard protocol)
 //
 
-type KeyId = 'CtrlC' | 'Enter' | 'Left' | 'Right' | 'Home' | 'End' | 'Backspace' | 'Delete' | 'Char';
-
-type ParsedKey = { key: 'Char'; char: string } | { key: Exclude<KeyId, 'Char'> } | null;
+type KeyId = 'CtrlC' | 'Enter' | 'Left' | 'Right' | 'Home' | 'End' | 'Backspace' | 'Delete' | 'Char'
+type ParsedKey = { key: 'Char', char: string } | { key: Exclude<KeyId, 'Char'> } | null
 
 function parseKey(seq: string): ParsedKey {
   // Ctrl+C
   if (seq === '\x03' || /^\x1b\[99;\d+u$/.test(seq)) {
-    return { key: 'CtrlC' };
+    return { key: 'CtrlC' }
   }
   // Enter
   if (seq === '\r' || /^\x1b\[13(;\d+)?u$/.test(seq)) {
-    return { key: 'Enter' };
+    return { key: 'Enter' }
   }
   // Left arrow
   if (seq === '\x1b[D' || /^\x1b\[1;\d+D$/.test(seq)) {
-    return { key: 'Left' };
+    return { key: 'Left' }
   }
   // Right arrow
   if (seq === '\x1b[C' || /^\x1b\[1;\d+C$/.test(seq)) {
-    return { key: 'Right' };
+    return { key: 'Right' }
   }
   // Home
   if (seq === '\x1b[H' || seq === '\x1b[1~' || /^\x1b\[1;\d+H$/.test(seq)) {
-    return { key: 'Home' };
+    return { key: 'Home' }
   }
   // End
   if (seq === '\x1b[F' || seq === '\x1b[4~' || /^\x1b\[1;\d+F$/.test(seq)) {
-    return { key: 'End' };
+    return { key: 'End' }
   }
   // Backspace
   if (seq === '\x7f' || seq === '\b' || /^\x1b\[127(;\d+)?u$/.test(seq)) {
-    return { key: 'Backspace' };
+    return { key: 'Backspace' }
   }
   // Delete
   if (seq === '\x1b[3~' || /^\x1b\[3;\d+~$/.test(seq)) {
-    return { key: 'Delete' };
+    return { key: 'Delete' }
   }
   // Printable ASCII
   if (seq.length === 1 && seq >= ' ' && seq <= '~') {
-    return { key: 'Char', char: seq };
+    return { key: 'Char', char: seq }
   }
-  return null;
+  return null
 }
 
 //
@@ -255,75 +254,75 @@ function parseKey(seq: string): ParsedKey {
 //
 
 process.stdin.on('data', (data: Buffer) => {
-  const seq = data.toString();
-  const parsed = parseKey(seq);
+  const seq = data.toString()
+  const parsed = parseKey(seq)
 
   // log the input to a file
-  const hex = [...data].map(b => b.toString(16).padStart(2, '0')).join(' ');
-  appendFileSync('input.txt', `${JSON.stringify(seq)} [${hex}] → ${parsed?.key ?? '???'}\n`);
+  const hex = [...data].map(b => b.toString(16).padStart(2, '0')).join(' ')
+  appendFileSync('input.txt', `${JSON.stringify(seq)} [${hex}] → ${parsed?.key ?? '???'}\n`)
 
-  if (!parsed) return;
+  if (!parsed) return
 
   switch (parsed.key) {
     case 'CtrlC':
-      cleanup();
-      break;
+      cleanup()
+      break
     case 'Enter':
-      clearLine();
-      const input = buffer.get();
+      clearLine()
+      const input = buffer.get()
       if (input.trim()) {
-        const rendered = displayMarkdown(input);
-        process.stdout.write(rendered);
+        const rendered = displayMarkdown(input)
+        process.stdout.write(rendered)
       }
-      buffer.clear();
-      process.stdout.write(prompt);
-      break;
+      buffer.clear()
+      process.stdout.write(prompt)
+      break
     case 'Left':
       if (buffer.pos() > 0) {
-        buffer.moveLeft();
-        process.stdout.write('\x1b[D');
+        buffer.moveLeft()
+        process.stdout.write('\x1b[D')
       }
-      break;
+      break
     case 'Right':
       if (buffer.pos() < buffer.len()) {
-        buffer.moveRight();
-        process.stdout.write('\x1b[C');
+        buffer.moveRight()
+        process.stdout.write('\x1b[C')
       }
-      break;
+      break
     case 'Home':
-      buffer.moveHome();
-      redrawInput();
-      break;
+      buffer.moveHome()
+      redrawInput()
+      break
     case 'End':
-      buffer.moveEnd();
-      redrawInput();
-      break;
+      buffer.moveEnd()
+      redrawInput()
+      break
     case 'Backspace':
       if (!buffer.atStart()) {
-        buffer.delete();
-        redrawInput();
+        buffer.delete()
+        redrawInput()
       }
-      break;
+      break
     case 'Delete':
       if (!buffer.atEnd()) {
-        buffer.delete();
-        redrawInput();
+        buffer.delete()
+        redrawInput()
       }
-      break;
+      break
     case 'Char':
-      buffer.insert(parsed.char);
+      buffer.insert(parsed.char)
       if (buffer.atEnd()) {
-        process.stdout.write(parsed.char);
+        process.stdout.write(parsed.char)
       } else {
-        redrawInput();
+        redrawInput()
       }
-      break;
+      break
   }
-});
+})
 
 //
 // engage
 //
 
-process.on('SIGINT', cleanup);
-startup();
+process.on('SIGINT', cleanup)
+startup()

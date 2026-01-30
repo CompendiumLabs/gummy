@@ -1,34 +1,34 @@
 // Custom marked renderer for terminal output with gum.jsx support
 
-import { readFileSync } from 'fs';
-import type { Tokens, RendererObject } from 'marked';
-import { parseGum, renderGum, rasterizeSvg } from './parser.js';
-import { formatImage, ansi } from './kitty.js';
-import type { Options } from './types.js';
+import { readFileSync } from 'fs'
+import type { Tokens, RendererObject } from 'marked'
+import { parseGum, renderGum, rasterizeSvg } from './parser'
+import { formatImage, ansi } from './kitty'
+import type { Options } from './types'
 
-const HEADING_COLORS = ['magenta', 'blue', 'green', 'red', 'cyan', 'yellow'];
+const HEADING_COLORS = ['magenta', 'blue', 'green', 'red', 'cyan', 'yellow']
 
 // Parse space-delimited key=value options from string
 function parseOptions(str: string): Options {
-  const opts: Options = {};
+  const opts: Options = {}
   for (const part of str.split(/\s+/)) {
-    const eq = part.indexOf('=');
+    const eq = part.indexOf('=')
     if (eq > 0) {
-      const key = part.slice(0, eq);
-      const value = part.slice(eq + 1);
+      const key = part.slice(0, eq)
+      const value = part.slice(eq + 1)
       if (key == 'size' || key == 'width' || key == 'height') {
-        opts[key] = Number(value);
+        opts[key] = Number(value)
       } else if (key == 'theme' && (value == 'light' || value == 'dark')) {
-        opts.theme = value;
+        opts.theme = value
       }
     }
   }
-  return opts;
+  return opts
 }
 
 // Check if language is gum/gum.jsx
 function isGumLang(lang: string): boolean {
-  return lang === 'gum' || lang === 'gum.jsx';
+  return lang === 'gum' || lang === 'gum.jsx'
 }
 
 // Create renderer with given global options
@@ -36,105 +36,105 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
   return {
     // Block elements
     heading({ tokens, depth }: Tokens.Heading): string {
-      const text = this.parser.parseInline(tokens);
-      const prefix = '#'.repeat(depth);
-      const clr = HEADING_COLORS[depth - 1] || 'magenta';
-      return ansi(`${prefix} ${text}`, { color: clr, bold: true }) + '\n\n';
+      const text = this.parser.parseInline(tokens)
+      const prefix = '#'.repeat(depth)
+      const clr = HEADING_COLORS[depth - 1] || 'magenta'
+      return ansi(`${prefix} ${text}`, { color: clr, bold: true }) + '\n\n'
     },
 
     paragraph({ tokens }: Tokens.Paragraph): string {
-      const text = this.parser.parseInline(tokens);
-      return `${text}\n\n`;
+      const text = this.parser.parseInline(tokens)
+      return `${text}\n\n`
     },
 
     code({ text, lang }: Tokens.Code): string {
-      const [baseLang, ...rest] = (lang || '').split(/\s+/);
-      const localOpts = parseOptions(rest.join(' '));
-      const { theme, size, width, height } = { ...globalOpts, ...localOpts };
+      const [baseLang, ...rest] = (lang || '').split(/\s+/)
+      const localOpts = parseOptions(rest.join(' '))
+      const { theme, size, width, height } = { ...globalOpts, ...localOpts }
 
       if (isGumLang(baseLang)) {
         try {
-          const elem = parseGum(text, { theme, size });
-          const png = renderGum(elem, { width, height });
-          return formatImage(png);
+          const elem = parseGum(text, { theme, size })
+          const png = renderGum(elem, { width, height })
+          return formatImage(png)
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          return `[gum.jsx error: ${message}]\n\n`;
+          const message = err instanceof Error ? err.message : String(err)
+          return `[gum.jsx error: ${message}]\n\n`
         }
       }
 
-      return `\`\`\`${ansi(baseLang, { color: 'blue' })}\n${ansi(text, { color: 'gray' })}\n\`\`\`\n\n`;
+      return `\`\`\`${ansi(baseLang, { color: 'blue' })}\n${ansi(text, { color: 'gray' })}\n\`\`\`\n\n`
     },
 
     blockquote({ tokens }: Tokens.Blockquote): string {
-      const text = this.parser.parse(tokens).trim().replace(/\n/g, '\n > ');
-      return ` > ${text}\n\n`;
+      const text = this.parser.parse(tokens).trim().replace(/\n/g, '\n > ')
+      return ` > ${text}\n\n`
     },
 
     list({ items, ordered }: Tokens.List): string {
       return items.map((item: Tokens.ListItem, i: number) => {
-        const bullet = ordered ? ` ${i + 1}. ` : ' — ';
-        const text = this.parser.parse(item.tokens).trim();
-        return bullet + text;
-      }).join('\n') + '\n\n';
+        const bullet = ordered ? ` ${i + 1}. ` : ' — '
+        const text = this.parser.parse(item.tokens).trim()
+        return bullet + text
+      }).join('\n') + '\n\n'
     },
 
     hr(): string {
-      return '---\n\n';
+      return '---\n\n'
     },
 
     // Inline elements
     strong({ tokens }: Tokens.Strong): string {
-      const text = this.parser.parseInline(tokens);
-      return ansi(`**${text}**`, { bold: true });
+      const text = this.parser.parseInline(tokens)
+      return ansi(`**${text}**`, { bold: true })
     },
 
     em({ tokens }: Tokens.Em): string {
-      const text = this.parser.parseInline(tokens);
-      return ansi(`_${text}_`, { color: 'gray', italic: true, bold: true });
+      const text = this.parser.parseInline(tokens)
+      return ansi(`_${text}_`, { color: 'gray', italic: true, bold: true })
     },
 
     codespan({ text }: Tokens.Codespan): string {
-      return `\`${ansi(text, { color: 'blue' })}\``;
+      return `\`${ansi(text, { color: 'blue' })}\``
     },
 
     link({ href, tokens }: Tokens.Link): string {
-      const text = this.parser.parseInline(tokens);
-      return `[${ansi(text, { color: 'blue' })}](${ansi(href, { color: 'gray' })}`;
+      const text = this.parser.parseInline(tokens)
+      return `[${ansi(text, { color: 'blue' })}](${ansi(href, { color: 'gray' })}`
     },
 
     image({ href, text }: Tokens.Image): string {
-      const isUrl = /^https?:\/\//.test(href);
-      const ext = href.split('.').pop()?.toLowerCase();
+      const isUrl = /^https?:\/\//.test(href)
+      const ext = href.split('.').pop()?.toLowerCase()
 
       if (!isUrl && (ext === 'png' || ext === 'svg')) {
         try {
-          const data = readFileSync(href);
-          const opts = parseOptions(text || '');
-          const png = ext === 'svg' ? rasterizeSvg(data, opts) : data;
-          return formatImage(png);
+          const data = readFileSync(href)
+          const opts = parseOptions(text || '')
+          const png = ext === 'svg' ? rasterizeSvg(data, opts) : data
+          return formatImage(png)
         } catch {
-          return ansi(`[Unable to load: ${href}]`, { color: 'gray' });
+          return ansi(`[Unable to load: ${href}]`, { color: 'gray' })
         }
       }
 
-      return ansi(`[External URL: ${href}]`, { color: 'gray' });
+      return ansi(`[External URL: ${href}]`, { color: 'gray' })
     },
 
     text(token: Tokens.Text | Tokens.Escape): string {
       if ('tokens' in token) {
-        return this.parser.parseInline(token.tokens ?? []);
+        return this.parser.parseInline(token.tokens ?? [])
       } else {
-        return token.text;
+        return token.text
       }
     },
 
     html(token: Tokens.HTML | Tokens.Tag): string {
-      return 'text' in token ? token.text : '';
+      return 'text' in token ? token.text : ''
     },
 
     br(): string {
-      return '\n';
+      return '\n'
     }
-  };
+  }
 }
