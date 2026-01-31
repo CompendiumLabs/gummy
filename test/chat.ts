@@ -246,6 +246,33 @@ function parseKey(seq: string): ParsedKey {
 }
 
 //
+// command handler
+//
+
+async function handleInput(input: string): Promise<string | undefined> {
+  // handle chat input
+  if (!input.startsWith('/')) {
+    const reply = await chat.reply(input)
+    return displayMarkdown(reply)
+  }
+
+  // parse the command and content
+  const match = /^\/(\S+)\s*(.*)?$/.exec(input)
+  if (!match) return 'No command specified'
+  const [_, command, content] = match
+
+  // handle the command
+  switch (command) {
+    case 'echo':
+      return displayMarkdown(content)
+    case 'gum':
+      return displayGum(content)
+    default:
+      return `Unknown command: /${command}`
+  }
+}
+
+//
 // input handler
 //
 
@@ -262,11 +289,9 @@ process.stdin.on('data', async (data: Buffer) => {
       clearLine()
       const input = buffer.get().trim()
       if (input) {
-        const input_line = ansi(input, { bg: 242 })
-        process.stdout.write(input_line + '\n\n')
-        const reply = await chat.reply(input)
-        const reply_render = displayMarkdown(reply)
-        process.stdout.write(reply_render)
+        process.stdout.write(`> ${ansi(input, { bg: 236 })}\n\n`)
+        const reply = await handleInput(input)
+        if (reply) process.stdout.write(reply)
       }
       buffer.clear()
       process.stdout.write(prompt)

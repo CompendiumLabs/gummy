@@ -4,12 +4,18 @@
 const CHUNK_SIZE = 4096
 
 // ANSI color codes
-const ANSI_FG: Record<string, number> = { gray: 90, red: 91, green: 92, yellow: 93, blue: 94, magenta: 95, cyan: 96, white: 97 }
-const ANSI_BG: Record<string, number> = { gray: 100, red: 101, green: 102, yellow: 103, blue: 104, magenta: 105, cyan: 106, white: 107 }
+const ANSI_LO: Record<string, number> = { gray: 0, red: 1, green: 2, yellow: 3, blue: 4, magenta: 5, cyan: 6, white: 7 }
+const ANSI_HI: Record<string, number> = { gray: 8, red: 9, green: 10, yellow: 11, blue: 12, magenta: 13, cyan: 14, white: 15 }
 
-function ansi(text: string, { fg = null, bg = null, bold = false, italic = false }: { fg?: number | null, bg?: number | null, bold?: boolean, italic?: boolean } = {}): string {
-  const pre_fg = fg != null ? `\x1b[38;5;${fg}m` : ''
-  const pre_bg = bg != null ? `\x1b[48;5;${bg}m` : ''
+type Color = keyof typeof ANSI_HI | number
+
+function color(name: Color): number {
+  return typeof name === 'string' ? ANSI_HI[name] : name
+}
+
+function ansi(text: string, { fg = null, bg = null, bold = false, italic = false }: { fg?: Color | null, bg?: Color | null, bold?: boolean, italic?: boolean } = {}): string {
+  const pre_fg = fg != null ? `\x1b[38;5;${color(fg)}m` : ''
+  const pre_bg = bg != null ? `\x1b[48;5;${color(bg)}m` : ''
   const pre_bold = bold ? '\x1b[1m' : ''
   const pre_italic = italic ? '\x1b[3m' : ''
   const post_reset = '\x1b[0m'
@@ -38,4 +44,4 @@ function formatImage(pngBuffer: Buffer): string {
   return result + '\n'
 }
 
-export { ansi, encodeImage, formatImage }
+export { ansi, encodeImage, formatImage, ANSI_LO, ANSI_HI }

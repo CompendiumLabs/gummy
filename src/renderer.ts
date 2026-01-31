@@ -2,7 +2,8 @@
 
 import { readFileSync } from 'fs'
 import type { Tokens, RendererObject } from 'marked'
-import { parseGum, renderGum, rasterizeSvg } from './parser'
+import { displayGum } from './display'
+import { rasterizeSvg } from './parser'
 import { formatImage, ansi } from './kitty'
 import type { Options } from './types'
 
@@ -50,13 +51,11 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
     code({ text, lang }: Tokens.Code): string {
       const [baseLang, ...rest] = (lang || '').split(/\s+/)
       const localOpts = parseOptions(rest.join(' '))
-      const { theme, size, width, height } = { ...globalOpts, ...localOpts }
+      const opts = { ...globalOpts, ...localOpts }
 
       if (isGumLang(baseLang)) {
         try {
-          const elem = parseGum(text, { theme, size })
-          const png = renderGum(elem, { width, height })
-          return formatImage(png)
+          return displayGum(text, opts)
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err)
           return `[gum.jsx error: ${message}]\n\n`
@@ -107,7 +106,9 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
       const isUrl = /^https?:\/\//.test(href)
       const ext = href.split('.').pop()?.toLowerCase()
 
-      if (!isUrl && (ext === 'png' || ext === 'svg')) {
+      if (isUrl) return ansi(`[External URL: ${href}]`, { fg: 'gray' })
+
+      if (ext === 'png' || ext === 'svg') {
         try {
           const data = readFileSync(href)
           const opts = parseOptions(text || '')
@@ -116,9 +117,13 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
         } catch {
           return ansi(`[Unable to load: ${href}]`, { fg: 'gray' })
         }
+      } else if (ext == 'jsx') {
+        const data = readFileSync(href, 'utf8')
+        const opts = parseOptions(text || '')
+        return displayGum(data, opts)
+      } else {
+        return ansi(`[Unsupported image type: ${ext}]`, { fg: 'gray' })
       }
-
-      return ansi(`[External URL: ${href}]`, { fg: 'gray' })
     },
 
     text(token: Tokens.Text | Tokens.Escape): string {

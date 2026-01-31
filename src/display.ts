@@ -13,7 +13,7 @@ function displayMarkdown(content: string, opts: Options = {}): string {
 }
 
 function displayGum(code: string, opts: Options = {}): string {
-  const { theme, size, width, height } = opts
+  let { theme, size, width, height } = opts
   const elem = parseGum(code, { theme, size })
   const png = renderGum(elem, { width, height })
   return formatImage(png)
