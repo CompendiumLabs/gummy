@@ -67,5 +67,6 @@ export function renderGum(elem: Svg, opts: Options = {}): Buffer {
   }
 
   // Pass to resvg for rasterize
-  return rasterizeSvg(svg, { width, height, font: FONT_ARGS })
+  const { font = FONT_ARGS } = opts
+  return rasterizeSvg(svg, { width, height, font })
 }

@@ -137,6 +137,33 @@ const system = readFileSync('prompt/system.md', 'utf8').trim()
 const chat = new ChatClient(model, { system, skills: [ gum_skill ] })
 
 //
+// command handler
+//
+
+async function handleInput(input: string): Promise<string | undefined> {
+  // handle chat input
+  if (!input.startsWith('/')) {
+    const reply = await chat.reply(input)
+    return displayMarkdown(reply)
+  }
+
+  // parse the command and content
+  const match = /^\/(\S+)\s*(.*)?$/.exec(input)
+  if (!match) return 'No command specified'
+  const [_, command, content] = match
+
+  // handle the command
+  switch (command) {
+    case 'echo':
+      return displayMarkdown(content)
+    case 'gum':
+      return displayGum(content)
+    default:
+      return `Unknown command: /${command}`
+  }
+}
+
+//
 // gum header
 //
 
@@ -243,33 +270,6 @@ function parseKey(seq: string): ParsedKey {
     return { key: 'Char', char: seq }
   }
   return null
-}
-
-//
-// command handler
-//
-
-async function handleInput(input: string): Promise<string | undefined> {
-  // handle chat input
-  if (!input.startsWith('/')) {
-    const reply = await chat.reply(input)
-    return displayMarkdown(reply)
-  }
-
-  // parse the command and content
-  const match = /^\/(\S+)\s*(.*)?$/.exec(input)
-  if (!match) return 'No command specified'
-  const [_, command, content] = match
-
-  // handle the command
-  switch (command) {
-    case 'echo':
-      return displayMarkdown(content)
-    case 'gum':
-      return displayGum(content)
-    default:
-      return `Unknown command: /${command}`
-  }
 }
 
 //

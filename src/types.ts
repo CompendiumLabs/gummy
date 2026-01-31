@@ -10,6 +10,7 @@ interface Options {
   theme?: Theme
   size?: Size
   font?: any
+  imageId?: number
 }
 
 function isTheme(value: string): value is Theme {
