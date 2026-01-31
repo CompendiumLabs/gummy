@@ -2,7 +2,7 @@
 
 import { readFileSync } from 'fs'
 import { displayMarkdown, displayGum } from '../src/display'
-import { ansi } from '../src/kitty'
+import { ansi } from '../src/terminal'
 
 import { generateText, stepCountIs, type UserModelMessage, type ModelMessage, type SystemModelMessage, type LanguageModel } from 'ai'
 import { createAnthropic, anthropic } from '@ai-sdk/anthropic'

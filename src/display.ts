@@ -3,7 +3,7 @@
 import { marked } from 'marked'
 import { createRenderer } from './renderer'
 import { parseGum, renderGum } from './parser'
-import { formatImage } from './kitty'
+import { formatImage } from './terminal'
 import { type Options } from './types'
 
 function displayMarkdown(content: string, opts: Options = {}): string {

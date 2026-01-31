@@ -4,7 +4,7 @@ import { readFileSync } from 'fs'
 import type { Tokens, RendererObject } from 'marked'
 import { displayGum } from './display'
 import { rasterizeSvg } from './parser'
-import { formatImage, ansi } from './kitty'
+import { formatImage, ansi } from './terminal'
 import type { Options } from './types'
 
 const HEADING_COLORS = ['magenta', 'blue', 'green', 'red', 'cyan', 'yellow']

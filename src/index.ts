@@ -6,7 +6,7 @@ import { readFileSync } from 'fs'
 import { program } from 'commander'
 import { type Theme, type Options, isTheme } from './types'
 import { displayMarkdown, displayGum } from './display'
-import { watchAndRender } from './kitty'
+import { watchAndRender } from './terminal'
 
 async function readStdin(): Promise<string> {
   const chunks: Buffer[] = []
