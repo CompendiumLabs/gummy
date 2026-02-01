@@ -18,7 +18,7 @@ function displayGum(code: string, { theme = 'dark', size = [1000, 500], width, h
   const elem = evaluateGum(code, { theme, size })
   const svg = elem.svg()
   const png = rasterizeSvg(svg, { size: elem.size, width, height })
-  return formatImage(png, { imageId })
+  return formatImage(png, { imageId }) + '\n'
 }
 
 export { displayMarkdown, displayGum }
