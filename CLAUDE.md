@@ -16,14 +16,13 @@ src/
 
 - `gum-jsx` - Vector graphics DSL (local dependency at ../gum.jsx)
 - `marked` - Markdown parser (we provide a custom renderer)
-- `@resvg/resvg-js` - SVG to PNG rasterization
 
 ## Code Flow
 
 1. **index.js**: Main entry point that either calls a markdown parser or a pure gum.jsx renderer
-2. **parser.js**: Calls `runJSX()` to evaluate code, wraps in `Svg` if needed, stores `elem` and `elem.size`. Also includes resvg rasterization to PNG data.
+2. **display.js**: Evaluates gum.jsx code, renders to SVG, rasterizes to PNG
 3. **renderer.js**: A basic marked Renderer that routes the gum.jsx routines
-4. **kitty.js**: Base64 encodes PNG, outputs in 4KB chunks using Kitty escape sequences
+4. **terminal.js**: Base64 encodes PNG, outputs in 4KB chunks using Kitty escape sequences
 
 ## Gum.jsx Integration
 

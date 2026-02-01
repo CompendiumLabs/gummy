@@ -2,9 +2,11 @@
 
 import { readFileSync } from 'fs'
 import type { Tokens, RendererObject } from 'marked'
+import { rasterizeSvg } from 'gum-jsx/render'
+import { formatImage } from 'gum-jsx/term'
+
 import { displayGum } from './display'
-import { rasterizeSvg } from './parser'
-import { formatImage, ansi } from './terminal'
+import { ansi } from './terminal'
 import type { Options } from './types'
 
 const HEADING_COLORS = ['magenta', 'blue', 'green', 'red', 'cyan', 'yellow']
@@ -108,21 +110,24 @@ export function createRenderer(globalOpts: Options = {}): RendererObject {
 
       if (isUrl) return ansi(`[External URL: ${href}]`, { fg: 'gray' })
 
-      if (ext === 'png' || ext === 'svg') {
-        try {
-          const data = readFileSync(href)
-          const opts = parseOptions(text || '')
-          const png = ext === 'svg' ? rasterizeSvg(data, opts) : data
+      try {
+        if (ext === 'png') {
+          const png = readFileSync(href)
           return formatImage(png)
-        } catch {
-          return ansi(`[Unable to load: ${href}]`, { fg: 'gray' })
+        } else if (ext == 'svg') {
+          const svg = readFileSync(href, 'utf8')
+          const opts = parseOptions(text || '')
+          const png = rasterizeSvg(svg, opts)
+          return formatImage(png)
+        } else if (ext == 'jsx') {
+          const data = readFileSync(href, 'utf8')
+          const opts = parseOptions(text || '')
+          return displayGum(data, opts)
+        } else {
+          return ansi(`[Unsupported image type: ${ext}]`, { fg: 'gray' })
         }
-      } else if (ext == 'jsx') {
-        const data = readFileSync(href, 'utf8')
-        const opts = parseOptions(text || '')
-        return displayGum(data, opts)
-      } else {
-        return ansi(`[Unsupported image type: ${ext}]`, { fg: 'gray' })
+      } catch {
+        return ansi(`[Unable to load image: ${href}]`, { fg: 'gray' })
       }
     },
 

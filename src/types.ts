@@ -13,8 +13,4 @@ interface Options {
   imageId?: number
 }
 
-function isTheme(value: string): value is Theme {
-  return THEMES.includes(value as Theme)
-}
-
-export { Options, Theme, Size, isTheme }
+export { Options, Theme, Size }

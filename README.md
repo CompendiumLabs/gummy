@@ -60,4 +60,3 @@ Options:
 
 - Terminal with Kitty graphics protocol support (kitty, ghostty, foot, etc.)
 - JavaScript runtime (node, bun, etc.)
-
